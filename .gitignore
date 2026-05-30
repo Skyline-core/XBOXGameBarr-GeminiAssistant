@@ -1,0 +1,35 @@
+# Build
+bin/
+obj/
+AppPackages/
+[Bb]uild/
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
+
+# Secrets
+secrets.json
+.env
+.env.local
+*.pfx
+
+# OS
+.DS_Store
+Thumbs.db
+
+# NuGet
+packages/
+*.nupkg
+
+# Test / temp
+*.log
+TestResults/

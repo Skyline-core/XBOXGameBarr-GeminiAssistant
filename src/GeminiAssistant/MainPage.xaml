@@ -1,0 +1,17 @@
+<Page
+    x:Class="GeminiAssistant.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <ScrollViewer Padding="24">
+        <StackPanel MaxWidth="520">
+            <TextBlock Text="Gemini Assistant" FontSize="28" FontWeight="SemiBold" Margin="0,0,0,12" />
+            <TextBlock x:Name="PackageInfoText" TextWrapping="Wrap" Opacity="0.85" Margin="0,0,0,16" />
+            <TextBlock Text="El widget NO aparece en el menu Inicio de Windows. Solo en Xbox Game Bar (Win+G)." FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,8" />
+            <TextBlock TextWrapping="Wrap" Opacity="0.9" LineHeight="22"
+                       Text="1. Despliega este proyecto (F5 o Compilar, Implementar).&#x0a;2. Abre un juego o cualquier app en primer plano.&#x0a;3. Pulsa Win+G.&#x0a;4. Icono de cuadricula (widgets), Biblioteca / Todos los widgets.&#x0a;5. Busca Gemini Assistant y Fijar / Pin.&#x0a;6. Si no sale: cierra Game Bar, vuelve a desplegar, Win+G otra vez.&#x0a;7. API key: widget Gemini Assistant Settings." />
+            <TextBlock Text="Depuracion: Propiedades del proyecto, Depurar, Iniciar aplicacion = No. F5 y abre el widget desde Game Bar." TextWrapping="Wrap" Opacity="0.7" Margin="0,16,0,0" FontSize="12" />
+        </StackPanel>
+    </ScrollViewer>
+</Page>
