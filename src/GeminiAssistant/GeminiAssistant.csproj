@@ -1,144 +1,86 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
-    <ProjectGuid>{B8E4F1A2-3C5D-4E6F-9A0B-1C2D3E4F5A6B}</ProjectGuid>
     <OutputType>AppContainerExe</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <RootNamespace>GeminiAssistant</RootNamespace>
     <AssemblyName>GeminiAssistant</AssemblyName>
     <DefaultLanguage>es-ES</DefaultLanguage>
-    <TargetPlatformIdentifier>UAP</TargetPlatformIdentifier>
-    <TargetPlatformVersion>10.0.26100.0</TargetPlatformVersion>
-    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
-    <MinimumVisualStudioVersion>14</MinimumVisualStudioVersion>
-    <FileAlignment>512</FileAlignment>
-    <ProjectTypeGuids>{A5A43C5B-DE2A-4C0C-9213-0A381AF9435A};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
-    <WindowsXamlEnableOverview>true</WindowsXamlEnableOverview>
-    <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <UseUwp>true</UseUwp>
+    <UseUwpTools>true</UseUwpTools>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <WindowsPackageType>MSIX</WindowsPackageType>
+    <!-- AppContainerExe no cuenta como ejecutable en el SDK; el apphost genera GeminiAssistant.exe para el manifiesto. -->
+    <UseAppHost>true</UseAppHost>
+    <_IsExecutable>true</_IsExecutable>
+    <!-- Sin esto el apphost usa subsistema consola y aparece una ventana CMD. -->
+    <_UseWindowsGraphicalUserInterface>true</_UseWindowsGraphicalUserInterface>
+    <GenerateAppxPackageOnBuild>true</GenerateAppxPackageOnBuild>
+    <AppxPackage>true</AppxPackage>
+    <NoWarn>$(NoWarn);NETSDK1206</NoWarn>
+    <PackageCertificateKeyFile Condition="Exists('$(MSBuildProjectDirectory)\GeminiAssistant_TemporaryKey.pfx')">GeminiAssistant_TemporaryKey.pfx</PackageCertificateKeyFile>
+    <PackageCertificatePassword Condition="'$(PackageCertificateKeyFile)' != ''">GeminiAssistant</PackageCertificatePassword>
+    <AppxPackageSigningEnabled Condition="'$(PackageCertificateKeyFile)' != ''">true</AppxPackageSigningEnabled>
+    <AppxPackageSigningEnabled Condition="'$(PackageCertificateKeyFile)' == ''">false</AppxPackageSigningEnabled>
+    <DeployOnBuild Condition="'$(Configuration)' == 'Debug'">true</DeployOnBuild>
+    <Platforms>x86;x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
+    <ApplicationManifest>Package.appxmanifest</ApplicationManifest>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Version>1.0.1</Version>
+    <Description>Xbox Game Bar widget with Gemini AI assistant</Description>
+    <GameBarRuntimeNativePath Condition="'$(Platform)' == 'x64'">win10-x64</GameBarRuntimeNativePath>
+    <GameBarRuntimeNativePath Condition="'$(Platform)' == 'x86'">win10-x86</GameBarRuntimeNativePath>
+    <GameBarRuntimeNativePath Condition="'$(Platform)' == 'ARM64'">win10-arm64</GameBarRuntimeNativePath>
+    <GameBarRuntimeNativePath Condition="'$(GameBarRuntimeNativePath)' == ''">win10-x64</GameBarRuntimeNativePath>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\x86\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE;NETFX_CORE;WINDOWS_UWP</DefineConstants>
-    <NoWarn>;2008</NoWarn>
-    <DebugType>full</DebugType>
-    <PlatformTarget>x86</PlatformTarget>
-    <UseVSHostingProcess>false</UseVSHostingProcess>
-    <ErrorReport>prompt</ErrorReport>
-    <Prefer32Bit>true</Prefer32Bit>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
-    <OutputPath>bin\x86\Release\</OutputPath>
-    <DefineConstants>TRACE;NETFX_CORE;WINDOWS_UWP</DefineConstants>
-    <Optimize>true</Optimize>
-    <NoWarn>;2008</NoWarn>
-    <DebugType>pdbonly</DebugType>
-    <PlatformTarget>x86</PlatformTarget>
-    <UseVSHostingProcess>false</UseVSHostingProcess>
-    <ErrorReport>prompt</ErrorReport>
-    <Prefer32Bit>true</Prefer32Bit>
-    <UseDotNetNativeToolchain>true</UseDotNetNativeToolchain>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\x64\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE;NETFX_CORE;WINDOWS_UWP</DefineConstants>
-    <NoWarn>;2008</NoWarn>
-    <DebugType>full</DebugType>
-    <PlatformTarget>x64</PlatformTarget>
-    <UseVSHostingProcess>false</UseVSHostingProcess>
-    <ErrorReport>prompt</ErrorReport>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
-    <OutputPath>bin\x64\Release\</OutputPath>
-    <DefineConstants>TRACE;NETFX_CORE;WINDOWS_UWP</DefineConstants>
-    <Optimize>true</Optimize>
-    <NoWarn>;2008</NoWarn>
-    <DebugType>pdbonly</DebugType>
-    <PlatformTarget>x64</PlatformTarget>
-    <UseVSHostingProcess>false</UseVSHostingProcess>
-    <ErrorReport>prompt</ErrorReport>
-    <UseDotNetNativeToolchain>true</UseDotNetNativeToolchain>
-  </PropertyGroup>
+
   <ItemGroup>
-    <PackageReference Include="Microsoft.Gaming.XboxGameBar" Version="7.2.240903001" />
-    <PackageReference Include="Win2D.uwp" Version="1.26.0" />
-    <PackageReference Include="Microsoft.NETCore.UniversalWindowsPlatform" Version="6.2.14" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Microsoft.Gaming.XboxGameBar" Version="7.3.2506120" GeneratePathProperty="true">
+      <ExcludeAssets>compile;runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Windows.CsWinRT" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools.MSIX" Version="1.7.260518100" />
   </ItemGroup>
+
   <ItemGroup>
-    <Compile Include="App.xaml.cs">
-      <DependentUpon>App.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="MainPage.xaml.cs">
-      <DependentUpon>MainPage.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Models\ChatMessage.cs" />
-    <Compile Include="Models\ChatMessageViewModel.cs" />
-    <Compile Include="Models\GameContextInfo.cs" />
-    <Compile Include="Models\PendingScreenshot.cs" />
-    <Compile Include="Services\AppSettingsService.cs" />
-    <Compile Include="Services\GameContextService.cs" />
-    <Compile Include="Services\GeminiChatService.cs" />
-    <Compile Include="Services\GeminiLiveService.cs" />
-    <Compile Include="Services\AudioRecordingService.cs" />
-    <Compile Include="Services\GraphicsCaptureItemInterop.cs" />
-    <Compile Include="Services\ProgrammaticCaptureHelper.cs" />
-    <Compile Include="Services\GameTargetWindowResolver.cs" />
-    <Compile Include="Services\ScreenCaptureService.cs" />
-    <Compile Include="Services\SpeechInputService.cs" />
-    <Compile Include="Services\WindowHandleInterop.cs" />
-    <Compile Include="Widgets\ChatWidget.xaml.cs">
-      <DependentUpon>ChatWidget.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Widgets\SettingsWidget.xaml.cs">
-      <DependentUpon>SettingsWidget.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Properties\AssemblyInfo.cs" />
+    <WindowsMetadataReference Include="$(PkgMicrosoft_Gaming_XboxGameBar)\lib\uap10.0\Microsoft.Gaming.XboxGameBar.winmd" MatchImplementationDllName="true" />
   </ItemGroup>
+
   <ItemGroup>
-    <AppxManifest Include="Package.appxmanifest">
-      <SubType>Designer</SubType>
-    </AppxManifest>
+    <Content Include="$(PkgMicrosoft_Gaming_XboxGameBar)\runtimes\$(GameBarRuntimeNativePath)\native\Microsoft.Gaming.XboxGameBar.dll" Link="Microsoft.Gaming.XboxGameBar.dll" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="$(PkgMicrosoft_Gaming_XboxGameBar)\lib\uap10.0\Microsoft.Gaming.XboxGameBar.winmd" Link="Microsoft.Gaming.XboxGameBar.winmd" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
   <ItemGroup>
     <Content Include="Properties\Default.rd.xml" />
-    <Content Include="Assets\StoreLogo.png" />
-    <Content Include="Assets\Square44x44Logo.png" />
-    <Content Include="Assets\Square150x150Logo.png" />
-    <Content Include="Assets\Wide310x150Logo.png" />
-    <Content Include="Assets\SplashScreen.png" />
-    <Content Include="GameBar\Chat\Icons\*.png" />
-    <Content Include="GameBar\Settings\Icons\*.png" />
+    <Content Include="Assets\**\*" />
+    <Content Include="GameBar\**\*" />
   </ItemGroup>
+
   <ItemGroup>
-    <ApplicationDefinition Include="App.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </ApplicationDefinition>
-    <Page Include="MainPage.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Widgets\ChatWidget.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Widgets\SettingsWidget.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
+    <Manifest Include="Package.appxmanifest" />
   </ItemGroup>
+
+  <ItemGroup Condition="'$(EnableMsixTooling)' == 'true'">
+    <ProjectCapability Include="Msix" />
+  </ItemGroup>
+
   <ItemGroup>
-    <SDKReference Include="WindowsDesktop, Version=10.0.26100.0">
-      <Name>Windows Desktop Extensions for the UWP</Name>
-    </SDKReference>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
   </ItemGroup>
-  <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
-    <VisualStudioVersion>14.0</VisualStudioVersion>
-  </PropertyGroup>
-  <Import Project="$(MSBuildExtensionsPath)\Microsoft\WindowsXaml\v$(VisualStudioVersion)\Microsoft.Windows.UI.Xaml.CSharp.targets" />
+
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
 </Project>

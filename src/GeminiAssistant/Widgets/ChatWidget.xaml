@@ -16,7 +16,7 @@
 
         <Border Grid.Row="0" Background="#FF252545" CornerRadius="6" Padding="10" Margin="0,0,0,8">
             <StackPanel>
-                <TextBlock Text="Juego / app activa" FontSize="11" Opacity="0.7" />
+                <TextBlock Text="Juego / app activa" FontSize="11" Opacity="0.7" TextWrapping="Wrap" />
                 <TextBlock x:Name="GameContextText" Text="Detectando..." FontWeight="SemiBold" TextWrapping="Wrap" />
             </StackPanel>
         </Border>
@@ -24,14 +24,18 @@
         <TextBlock x:Name="StatusText" Grid.Row="1" Foreground="#FFFFB347" FontSize="12"
                    Margin="0,0,0,6" TextWrapping="Wrap" Visibility="Collapsed" />
 
-        <ListView x:Name="MessagesList" Grid.Row="2" Margin="0,0,0,8" SelectionMode="None">
+        <ListView x:Name="MessagesList" Grid.Row="2" Margin="0,0,0,8" SelectionMode="None"
+                  IsItemClickEnabled="False">
             <ListView.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Margin="0,4" MaxWidth="360">
-                        <TextBlock Text="{Binding RoleLabel}" FontSize="11" Opacity="0.6" />
-                        <Image Source="{Binding Thumbnail}" MaxHeight="120" Stretch="Uniform"
-                               Visibility="{Binding ThumbnailVisibility}" />
-                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                        <TextBlock Text="{Binding RoleLabel}" FontSize="11" Opacity="0.6"
+                                   IsTextSelectionEnabled="True" />
+                        <TextBlock Text="{Binding AttachmentCaption}" FontSize="11" Opacity="0.75"
+                                   Visibility="{Binding AttachmentVisibility}"
+                                   IsTextSelectionEnabled="True" />
+                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   IsTextSelectionEnabled="True" />
                     </StackPanel>
                 </DataTemplate>
             </ListView.ItemTemplate>
@@ -44,9 +48,9 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <Image x:Name="ScreenshotPreview" Width="80" Height="45" Stretch="Uniform" />
+                <Image x:Name="ScreenshotPreview" Width="80" Height="45" Stretch="Uniform" Visibility="Collapsed" />
                 <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
-                    <TextBlock Text="Captura lista para enviar" FontSize="12" />
+                    <TextBlock x:Name="ScreenshotPreviewLabel" Text="Captura lista para enviar" FontSize="12" TextWrapping="Wrap" />
                     <Button Content="Quitar" Click="RemoveScreenshot_Click" FontSize="11" Margin="0,6,0,0"
                             IsTabStop="False" />
                 </StackPanel>
@@ -58,7 +62,9 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBox x:Name="InputBox" PlaceholderText="Pregunta a Gemini..." KeyDown="InputBox_KeyDown" />
+            <TextBox x:Name="InputBox" PlaceholderText="Pregunta a Gemini..."
+                     AcceptsReturn="False" IsTextPredictionEnabled="False"
+                     KeyDown="InputBox_KeyDown" />
             <Button Grid.Column="1" Content="Enviar" Click="Send_Click" Margin="8,0,0,0"
                     IsTabStop="False" />
         </Grid>
@@ -68,7 +74,8 @@
                     IsTabStop="False" />
             <Button x:Name="MicButton" Content="Microfono" Click="Mic_Click" Margin="0,0,8,0"
                     IsTabStop="False" />
-            <Button Content="Limpiar chat" Click="ClearChat_Click" IsTabStop="False" />
+            <Button Content="Limpiar chat" Click="ClearChat_Click" Margin="0,0,8,0" IsTabStop="False" />
+            <Button Content="Ver log" Click="ShowLog_Click" IsTabStop="False" />
         </StackPanel>
     </Grid>
 </Page>

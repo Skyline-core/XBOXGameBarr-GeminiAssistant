@@ -1,5 +1,4 @@
 using Windows.UI.Xaml;
-using Windows.UI.Xaml.Media.Imaging;
 
 namespace GeminiAssistant.Models
 {
@@ -7,7 +6,7 @@ namespace GeminiAssistant.Models
     {
         public string RoleLabel { get; set; }
         public string Text { get; set; }
-        public BitmapImage Thumbnail { get; set; }
-        public Visibility ThumbnailVisibility { get; set; } = Visibility.Collapsed;
+        public Visibility AttachmentVisibility { get; set; } = Visibility.Collapsed;
+        public string AttachmentCaption { get; set; }
     }
 }

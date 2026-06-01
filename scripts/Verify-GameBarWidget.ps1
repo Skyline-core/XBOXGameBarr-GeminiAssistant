@@ -5,10 +5,17 @@ Write-Host "=== Gemini Assistant / Game Bar ===" -ForegroundColor Cyan
 
 $pkg = Get-AppxPackage -Name $packageName -ErrorAction SilentlyContinue
 if (-not $pkg) {
+    $pkg = Get-AppxPackage -ErrorAction SilentlyContinue | Where-Object {
+        $_.DisplayName -eq 'Gemini Assistant' -or $_.PackageFamilyName -like 'GeminiAssistant_*'
+    } | Select-Object -First 1
+}
+if (-not $pkg) {
     Write-Host "NOT INSTALLED: no AppX package named '$packageName'." -ForegroundColor Red
     Write-Host ""
-    Write-Host "Fix: In Visual Studio, set platform x64, then Deploy (or F5)." -ForegroundColor Yellow
-    Write-Host "     Project must finish deploy without errors."
+    Write-Host "Fix (Administrator PowerShell):" -ForegroundColor Yellow
+    Write-Host "  1. scripts\Clean-UwpBuild.ps1"
+    Write-Host "  2. Rebuild in VS (x64, Debug)"
+    Write-Host "  3. scripts\Install-GameBarWidget.ps1"
     exit 1
 }
 

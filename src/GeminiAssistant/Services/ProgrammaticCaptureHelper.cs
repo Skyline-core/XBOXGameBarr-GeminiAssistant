@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
 using Windows.Foundation.Metadata;
 using Windows.Graphics.Capture;
@@ -8,20 +9,112 @@ namespace GeminiAssistant.Services
 {
     internal static class ProgrammaticCaptureHelper
     {
+        private static AppCapabilityAccessStatus? _cachedAccess;
+
+        public static bool IsProgrammaticCaptureDeclared()
+        {
+            if (!ApiInformation.IsTypePresent(
+                    "Windows.Security.Authorization.AppCapabilityAccess.AppCapability"))
+            {
+                return false;
+            }
+
+            try
+            {
+                var capability = AppCapability.Create("graphicsCaptureProgrammatic");
+                return capability.CheckAccess() != AppCapabilityAccessStatus.NotDeclaredByApp;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static AppCapabilityAccessStatus GetCaptureAccessStatus()
+        {
+            if (_cachedAccess.HasValue)
+            {
+                return _cachedAccess.Value;
+            }
+
+            if (!IsProgrammaticCaptureDeclared())
+            {
+                return AppCapabilityAccessStatus.NotDeclaredByApp;
+            }
+
+            try
+            {
+                var capability = AppCapability.Create("graphicsCaptureProgrammatic");
+                return capability.CheckAccess();
+            }
+            catch
+            {
+                return AppCapabilityAccessStatus.UserPromptRequired;
+            }
+        }
+
+        /// <summary>
+        /// Pide permiso solo si hace falta. Llamar al abrir el widget, no al pulsar Capturar.
+        /// </summary>
+        public static async Task<AppCapabilityAccessStatus> EnsureCaptureAccessAsync()
+        {
+            if (!IsProgrammaticCaptureDeclared())
+            {
+                _cachedAccess = AppCapabilityAccessStatus.NotDeclaredByApp;
+                return AppCapabilityAccessStatus.NotDeclaredByApp;
+            }
+
+            try
+            {
+                var current = GetCaptureAccessStatus();
+                if (current == AppCapabilityAccessStatus.Allowed)
+                {
+                    _cachedAccess = current;
+                    return current;
+                }
+
+                if (current == AppCapabilityAccessStatus.DeniedByUser ||
+                    current == AppCapabilityAccessStatus.DeniedBySystem)
+                {
+                    return current;
+                }
+
+                return await RequestCaptureAccessAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                WidgetFileLog.Write("WGC EnsureCaptureAccess: " + WidgetExceptionFormatter.Format(ex));
+                return AppCapabilityAccessStatus.DeniedBySystem;
+            }
+        }
+
         public static async Task<AppCapabilityAccessStatus> RequestCaptureAccessAsync()
         {
+            if (_cachedAccess == AppCapabilityAccessStatus.Allowed)
+            {
+                return AppCapabilityAccessStatus.Allowed;
+            }
+
             var status = AppCapabilityAccessStatus.UserPromptRequired;
 
             if (ApiInformation.IsTypePresent("Windows.Graphics.Capture.GraphicsCaptureAccess"))
             {
-                status = await GraphicsCaptureAccess
-                    .RequestAccessAsync(GraphicsCaptureAccessKind.Programmatic)
-                    .AsTask()
-                    .ConfigureAwait(true);
-
-                if (status == AppCapabilityAccessStatus.Allowed)
+                try
                 {
-                    return status;
+                    status = await GraphicsCaptureAccess
+                        .RequestAccessAsync(GraphicsCaptureAccessKind.Programmatic)
+                        .AsTask()
+                        .ConfigureAwait(false);
+
+                    if (status == AppCapabilityAccessStatus.Allowed)
+                    {
+                        _cachedAccess = status;
+                        return status;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    WidgetFileLog.Write("WGC GraphicsCaptureAccess: " + WidgetExceptionFormatter.Format(ex));
                 }
             }
 
@@ -31,7 +124,11 @@ namespace GeminiAssistant.Services
                 try
                 {
                     var capability = AppCapability.Create("graphicsCaptureProgrammatic");
-                    status = await capability.RequestAccessAsync().AsTask().ConfigureAwait(true);
+                    status = await capability.RequestAccessAsync().AsTask().ConfigureAwait(false);
+                    if (status == AppCapabilityAccessStatus.Allowed)
+                    {
+                        _cachedAccess = status;
+                    }
                 }
                 catch
                 {

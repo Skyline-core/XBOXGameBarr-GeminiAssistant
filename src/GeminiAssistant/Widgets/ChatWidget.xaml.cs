@@ -6,13 +6,17 @@ using System.Runtime.InteropServices.WindowsRuntime;
 
 using System.Threading;
 
+using System.Threading.Tasks;
+
+using Windows.UI.Core;
+
 using GeminiAssistant.Models;
+
+using Windows.System;
 
 using GeminiAssistant.Services;
 
 using Microsoft.Gaming.XboxGameBar;
-
-using Windows.Storage.Streams;
 
 using Windows.UI;
 
@@ -23,8 +27,6 @@ using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Input;
 
 using Windows.UI.Xaml.Media;
-
-using Windows.UI.Xaml.Media.Imaging;
 
 using Windows.UI.Xaml.Navigation;
 
@@ -52,11 +54,13 @@ namespace GeminiAssistant.Widgets
 
         private readonly ScreenCaptureService _captureService = new ScreenCaptureService();
 
-        private readonly ObservableCollection<ChatMessageViewModel> _messages = new ObservableCollection<ChatMessageViewModel>();
-
         private PendingScreenshot _pendingScreenshot;
 
         private CancellationTokenSource _operationCts;
+
+        private bool _sendInProgress;
+
+        private readonly SemaphoreSlim _sendGate = new SemaphoreSlim(1, 1);
 
         private readonly SolidColorBrush _darkBrush = new SolidColorBrush(Color.FromArgb(255, 26, 26, 46));
 
@@ -70,7 +74,7 @@ namespace GeminiAssistant.Widgets
 
             InitializeComponent();
 
-            MessagesList.ItemsSource = _messages;
+            MessagesList.ItemsSource = ChatSessionStore.Current.Messages;
 
         }
 
@@ -104,7 +108,9 @@ namespace GeminiAssistant.Widgets
 
             _liveService.AttachWidget(_widget);
 
-            _gameContext = new GameContextService(_widget);
+            CoreUiDispatcher.Bind(Dispatcher);
+
+            _gameContext = new GameContextService(_widget, Dispatcher);
 
             _gameContext.ContextChanged += OnGameContextChanged;
 
@@ -112,7 +118,81 @@ namespace GeminiAssistant.Widgets
 
             UpdateGameBanner(_gameContext.Current);
 
-            ShowStatusIfNoApiKey();
+            WidgetFileLog.Write("ChatWidget abierto");
+
+            _sendInProgress = false;
+
+            SetActionButtonsEnabled(true);
+
+            _pendingScreenshot = ChatSessionStore.Current.PendingScreenshot;
+            if (_pendingScreenshot?.JpegBytes != null && _pendingScreenshot.JpegBytes.Length > 0)
+            {
+                ShowScreenshotReadyUi(_pendingScreenshot.JpegBytes.Length, _pendingScreenshot.Source);
+            }
+
+            var log = WidgetDiagnostics.GetLastError();
+            if (!string.IsNullOrEmpty(log))
+            {
+                ShowStatus("Diagnostico: " + log);
+            }
+            else
+            {
+                ShowStatusIfNoApiKey();
+            }
+
+            if (PendingCaptureStore.HasPending())
+
+            {
+
+                _ = RestorePendingCaptureAsync();
+
+            }
+
+            else
+
+            {
+
+                ShowGameBarCaptureTip();
+
+            }
+
+
+
+            _ = EnsureCapturePermissionAsync();
+
+        }
+
+
+
+        private async System.Threading.Tasks.Task EnsureCapturePermissionAsync()
+
+        {
+
+            try
+
+            {
+
+                var status = await ProgrammaticCaptureHelper.EnsureCaptureAccessAsync();
+
+                WidgetFileLog.Write("Permiso captura al abrir: " + ProgrammaticCaptureHelper.DescribeAccessStatus(status));
+
+                if (status == Windows.Security.Authorization.AppCapabilityAccess.AppCapabilityAccessStatus.DeniedByUser)
+
+                {
+
+                    ShowStatus("Captura: activa permiso de captura de pantalla en Ajustes de Windows.");
+
+                }
+
+            }
+
+            catch (Exception ex)
+
+            {
+
+                WidgetFileLog.Write("Permiso captura: " + WidgetExceptionFormatter.Format(ex));
+
+            }
 
         }
 
@@ -238,15 +318,41 @@ namespace GeminiAssistant.Widgets
 
 
 
-        private void SetBusy(bool busy, string status = null)
+        private void SetActionButtonsEnabled(bool enabled)
 
         {
 
-            CaptureButton.IsEnabled = !busy;
+            CaptureButton.IsEnabled = enabled;
 
-            MicButton.IsEnabled = !busy;
+            MicButton.IsEnabled = enabled;
 
-            InputBox.IsEnabled = !busy;
+        }
+
+
+
+        private System.Threading.Tasks.Task SetActionButtonsEnabledAsync(bool enabled)
+
+        {
+
+            return CoreUiDispatcher.RunOnUiAsync(() =>
+
+            {
+
+                SetActionButtonsEnabled(enabled);
+
+                return System.Threading.Tasks.Task.CompletedTask;
+
+            });
+
+        }
+
+
+
+        private void SetSendInProgress(bool inProgress, string status = null)
+
+        {
+
+            _sendInProgress = inProgress;
 
             if (!string.IsNullOrEmpty(status))
 
@@ -260,13 +366,149 @@ namespace GeminiAssistant.Widgets
 
 
 
+        private System.Threading.Tasks.Task SetSendInProgressAsync(bool inProgress, string status = null)
+
+        {
+
+            return RunOnUiAsync(() => SetSendInProgress(inProgress, status));
+
+        }
+
+
+
+        private System.Threading.Tasks.Task SetActionBusyAsync(bool busy, string status = null)
+
+        {
+
+            return RunOnUiAsync(() =>
+
+            {
+
+                SetActionButtonsEnabled(!busy);
+
+                if (!string.IsNullOrEmpty(status))
+
+                {
+
+                    ShowStatus(status);
+
+                }
+
+            });
+
+        }
+
+
+
+        /// <summary>Marshaling al hilo UI del widget (Game Bar no tiene SynchronizationContext).</summary>
+
+        private Task RunOnUiAsync(Action action)
+
+        {
+
+            return CoreUiDispatcher.RunOnUiAsync(action ?? (() => { }));
+
+        }
+
+
+
         private async System.Threading.Tasks.Task ReportErrorAsync(string message)
 
         {
 
-            ShowStatus(message);
+            await SafeReportErrorAsync(message);
 
-            await AddMessageAsync("Sistema", message, null);
+        }
+
+
+
+        private System.Threading.Tasks.Task SafeReportErrorAsync(string message)
+
+        {
+
+            if (string.IsNullOrWhiteSpace(message))
+
+            {
+
+                message = "Error desconocido (el widget pudo cerrarse durante la peticion).";
+
+            }
+
+
+
+            return CoreUiDispatcher.RunOnUiAsync(() =>
+
+            {
+
+                try
+
+                {
+
+                    ShowStatus(message);
+
+                    SafeAddMessageCore("Sistema", message, null);
+
+                }
+
+                catch (Exception ex)
+
+                {
+
+                    WidgetFileLog.Write("SafeReportError fallo: " + WidgetExceptionFormatter.Format(ex));
+
+                }
+
+                return System.Threading.Tasks.Task.CompletedTask;
+
+            });
+
+        }
+
+
+
+        private async void InputBox_KeyDown(object sender, KeyRoutedEventArgs e)
+
+        {
+
+            if (e.Key != VirtualKey.Enter)
+
+            {
+
+                return;
+
+            }
+
+
+
+            e.Handled = true;
+
+            if (_sendInProgress)
+
+            {
+
+                return;
+
+            }
+
+
+
+            try
+
+            {
+
+                await SendUserMessageAsync(InputBox.Text);
+
+            }
+
+            catch (Exception ex)
+
+            {
+
+                WidgetFileLog.Write("InputBox_Enter crash: " + WidgetExceptionFormatter.Format(ex));
+
+                await SafeReportErrorAsync(WidgetExceptionFormatter.Format(ex));
+
+            }
 
         }
 
@@ -290,23 +532,21 @@ namespace GeminiAssistant.Widgets
 
         {
 
-            await SendUserMessageAsync(InputBox.Text);
-
-        }
-
-
-
-        private async void InputBox_KeyDown(object sender, KeyRoutedEventArgs e)
-
-        {
-
-            if (e.Key == Windows.System.VirtualKey.Enter)
+            try
 
             {
 
-                e.Handled = true;
-
                 await SendUserMessageAsync(InputBox.Text);
+
+            }
+
+            catch (Exception ex)
+
+            {
+
+                WidgetFileLog.Write("Send_Click crash: " + WidgetExceptionFormatter.Format(ex));
+
+                await SafeReportErrorAsync(WidgetExceptionFormatter.Format(ex));
 
             }
 
@@ -354,37 +594,119 @@ namespace GeminiAssistant.Widgets
 
 
 
+            if (_sendInProgress)
+
+            {
+
+                await RunOnUiAsync(() => ShowStatus("Espera a que termine el envio anterior."));
+
+                return;
+
+            }
+
+
+
+            if (!await _sendGate.WaitAsync(0))
+
+            {
+
+                await RunOnUiAsync(() => ShowStatus("Espera a que termine el envio anterior."));
+
+                return;
+
+            }
+
+
+
             CancelOperation();
 
             _operationCts = new CancellationTokenSource();
 
-            await AddMessageAsync("Tu", text, screenshot);
+            WidgetFileLog.Write("Send inicio");
 
-            InputBox.Text = string.Empty;
+            var gameContextSnapshot = _gameContext.Current;
 
-            ClearPendingScreenshotUi();
-
-
-
-            SetBusy(true, "Gemini esta pensando...");
+            WidgetKeepAlive keepAlive = null;
 
             try
 
             {
 
+                await SetSendInProgressAsync(true, "Enviando a Gemini...");
+
+
+
+                WidgetFileLog.Write("Send paso: activity");
+
+                await _liveService.BeginRequestActivityAsync();
+
+                WidgetFileLog.Write("Send paso: keepalive");
+
+                keepAlive = await WidgetKeepAlive.BeginAsync();
+
+
+
+                if (screenshot?.JpegBytes != null && screenshot.JpegBytes.Length > 220_000)
+
+                {
+
+                    WidgetFileLog.Write("Send paso: comprimir captura");
+
+                    var prepared = await CoreUiDispatcher.RunOnUiAsync(
+
+                        () => ScreenshotImageHelper.PrepareForApiAsync(screenshot.JpegBytes));
+
+                    screenshot = new PendingScreenshot { JpegBytes = prepared, Source = screenshot.Source };
+
+                }
+
+
+
+                WidgetFileLog.Write("Send paso: mensaje usuario");
+
+                await CoreUiDispatcher.RunOnUiAsync(() =>
+
+                {
+
+                    SafeAddMessageCore("Tu", text, screenshot);
+
+                    InputBox.Text = string.Empty;
+
+                    return System.Threading.Tasks.Task.CompletedTask;
+
+                });
+
+
+
+                WidgetFileLog.Write("Send paso: llamada Gemini");
+
                 var reply = await _chatService.SendMessageAsync(
 
                     text,
 
-                    _gameContext.Current,
+                    gameContextSnapshot,
 
                     screenshot,
 
                     _operationCts.Token);
 
-                await AddMessageAsync("Gemini", reply, null);
+                WidgetFileLog.Write("Send paso: respuesta OK");
 
-                StatusText.Visibility = Visibility.Collapsed;
+
+
+                await CoreUiDispatcher.RunOnUiAsync(() =>
+
+                {
+
+                    ClearPendingScreenshotUi();
+
+                    SafeAddMessageCore("Gemini", reply, null);
+
+                    StatusText.Visibility = Visibility.Collapsed;
+
+                    return System.Threading.Tasks.Task.CompletedTask;
+
+                });
 
             }
 
@@ -392,7 +714,11 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                await ReportErrorAsync(ex.Message);
+                var detail = WidgetExceptionFormatter.Format(ex);
+
+                WidgetFileLog.Write("Send error: " + detail);
+
+                await SafeReportErrorAsync(detail);
 
             }
 
@@ -400,7 +726,31 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                SetBusy(false);
+                _sendGate.Release();
+
+
+
+                try
+
+                {
+
+                    await SetSendInProgressAsync(false);
+
+                    await RunOnUiAsync(() => WidgetFileLog.Write("Send fin"));
+
+                    await WidgetKeepAlive.ReleaseAsync(keepAlive);
+
+                    await _liveService.EndRequestActivityAsync();
+
+                }
+
+                catch (Exception ex)
+
+                {
+
+                    WidgetFileLog.Write("Send cleanup: " + WidgetExceptionFormatter.Format(ex));
+
+                }
 
             }
 
@@ -424,23 +774,53 @@ namespace GeminiAssistant.Widgets
 
 
 
-            SetBusy(true, "Capturando ventana del juego...");
+            if (!CaptureButton.IsEnabled)
+
+            {
+
+                return;
+
+            }
+
+
+
+            WidgetFileLog.Write("Captura inicio");
+
+            var gameContextSnapshot = _gameContext.Current;
+
+            WidgetKeepAlive keepAlive = null;
 
             try
 
             {
 
-                _gameContext.Refresh();
-
-                var shot = await _captureService.CaptureAsync(_gameContext.Current, _widget).ConfigureAwait(true);
+                await SetActionBusyAsync(true, "Capturando pantalla del juego...");
 
 
 
-                _pendingScreenshot = shot;
+                await _liveService.BeginCaptureActivityAsync();
 
-                await ShowScreenshotPreviewAsync(shot.JpegBytes);
+                keepAlive = await WidgetKeepAlive.BeginAsync();
 
-                ShowStatus("Captura lista. Escribe tu mensaje y pulsa Enviar.");
+                var shot = await _captureService.CaptureAsync(gameContextSnapshot);
+
+
+
+                await CoreUiDispatcher.RunOnUiAsync(() =>
+
+                {
+
+                    _pendingScreenshot = shot;
+
+                    ChatSessionStore.Current.PendingScreenshot = shot;
+
+                    ShowScreenshotReadyUi(shot.JpegBytes.Length, shot.Source);
+
+                    ShowStatus("Screenshot listo. Escribe tu mensaje y pulsa Enviar o Enter.");
+
+                    return System.Threading.Tasks.Task.CompletedTask;
+
+                });
 
             }
 
@@ -448,10 +828,9 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                var detail = ex.InnerException != null
-                    ? ex.Message + " (" + ex.InnerException.Message + ")"
-                    : ex.Message;
-                await ReportErrorAsync("Captura: " + detail);
+                WidgetFileLog.Write("Captura error: " + WidgetExceptionFormatter.Format(ex));
+
+                await SafeReportErrorAsync("Captura: " + WidgetExceptionFormatter.Format(ex));
 
             }
 
@@ -459,7 +838,29 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                SetBusy(false);
+                await SetActionButtonsEnabledAsync(true);
+
+                WidgetFileLog.Write("Captura fin");
+
+
+
+                try
+
+                {
+
+                    await WidgetKeepAlive.ReleaseAsync(keepAlive);
+
+                    await _liveService.EndCaptureActivityAsync();
+
+                }
+
+                catch (Exception ex)
+
+                {
+
+                    WidgetFileLog.Write("Captura cleanup: " + WidgetExceptionFormatter.Format(ex));
+
+                }
 
             }
 
@@ -467,30 +868,46 @@ namespace GeminiAssistant.Widgets
 
 
 
-        private async System.Threading.Tasks.Task ShowScreenshotPreviewAsync(byte[] jpegBytes)
+        private void ShowScreenshotReadyUi(int jpegByteCount, string source = null)
 
         {
 
-            var image = new BitmapImage { DecodePixelWidth = 160 };
+            var kb = Math.Max(1, jpegByteCount / 1024);
 
-            using (var stream = new InMemoryRandomAccessStream())
+            var sourceLabel = DescribeCaptureSource(source);
 
-            {
-
-                await stream.WriteAsync(jpegBytes.AsBuffer());
-
-                stream.Seek(0);
-
-                image.SetSource(stream);
-
-            }
-
-
-
-            ScreenshotPreview.Source = image;
+            ScreenshotPreviewLabel.Text = "Screenshot listo (" + kb + " KB, " + sourceLabel + "). Pulsa Enviar.";
 
             ScreenshotPreviewPanel.Visibility = Visibility.Visible;
 
+        }
+
+
+
+        private static string DescribeCaptureSource(string source)
+
+        {
+
+            if (string.IsNullOrEmpty(source))
+            {
+                return "captura";
+            }
+
+            switch (source)
+            {
+                case "ventana":
+                    return "ventana elegida";
+                case "juego":
+                    return "ventana del juego";
+                case "gamebar":
+                case "gamebar-manual":
+                case "gamebar-archivo":
+                    return "Game Bar";
+                case "ventana-juego":
+                    return "ventana del juego";
+                default:
+                    return source;
+            }
         }
 
 
@@ -513,9 +930,75 @@ namespace GeminiAssistant.Widgets
 
             _pendingScreenshot = null;
 
-            ScreenshotPreview.Source = null;
+            ChatSessionStore.Current.PendingScreenshot = null;
+
+            _ = PendingCaptureStore.ClearAsync();
 
             ScreenshotPreviewPanel.Visibility = Visibility.Collapsed;
+
+        }
+
+
+
+        private void ShowGameBarCaptureTip()
+
+        {
+
+            ShowStatus(
+
+                "Capturar hace screenshot del juego automaticamente. Enter envia.");
+
+        }
+
+
+
+        private async System.Threading.Tasks.Task RestorePendingCaptureAsync()
+
+        {
+
+            if (!PendingCaptureStore.HasPending())
+
+            {
+
+                return;
+
+            }
+
+
+
+            try
+
+            {
+
+                var bytes = await PendingCaptureStore.LoadAsync().ConfigureAwait(true);
+
+                if (bytes == null || bytes.Length == 0)
+
+                {
+
+                    return;
+
+                }
+
+
+
+                _pendingScreenshot = new PendingScreenshot { JpegBytes = bytes };
+
+                ChatSessionStore.Current.PendingScreenshot = _pendingScreenshot;
+
+                ShowScreenshotReadyUi(bytes.Length);
+
+                ShowStatus("Captura recuperada. Escribe tu mensaje y pulsa Enviar.");
+
+            }
+
+            catch (Exception ex)
+
+            {
+
+                ShowStatus("No se pudo restaurar la captura: " + ex.Message);
+
+            }
 
         }
 
@@ -545,45 +1028,95 @@ namespace GeminiAssistant.Widgets
 
 
 
-            _liveService.BeginVoiceActivity();
+            if (!MicButton.IsEnabled)
 
-            SetBusy(true, "Grabando 6 s... Habla AHORA (no hace falta el cuadro de texto).");
+            {
+
+                return;
+
+            }
+
+
+
+            var gameContextSnapshot = _gameContext.Current;
+
+            WidgetKeepAlive keepAlive = null;
 
             try
 
             {
 
-                var wav = await AudioRecordingService.RecordWavAsync(
-
-                    VoiceRecordDuration,
-
-                    _operationCts.Token).ConfigureAwait(true);
+                await SetActionBusyAsync(true, "Grabando 6 s... Habla AHORA (no hace falta el cuadro de texto).");
 
 
 
-                await AddMessageAsync("Tu (voz)", "Audio grabado, enviando a Gemini...", screenshot);
+                await _liveService.BeginVoiceActivityAsync();
 
-                ShowStatus("Gemini transcribe tu voz...");
+                var wav = await CoreUiDispatcher.RunOnUiAsync(
 
-
-
-                var reply = await _chatService.SendVoiceMessageAsync(
-
-                    wav,
-
-                    _gameContext.Current,
-
-                    screenshot,
-
-                    _operationCts.Token).ConfigureAwait(true);
+                    () => AudioRecordingService.RecordWavAsync(VoiceRecordDuration, _operationCts.Token));
 
 
 
-                ClearPendingScreenshotUi();
+                await CoreUiDispatcher.RunOnUiAsync(() =>
 
-                await AddMessageAsync("Gemini", reply, null);
+                {
 
-                StatusText.Visibility = Visibility.Collapsed;
+                    SafeAddMessageCore("Tu (voz)", "Audio grabado, enviando a Gemini...", screenshot);
+
+                    ShowStatus("Gemini transcribe tu voz...");
+
+                    return System.Threading.Tasks.Task.CompletedTask;
+
+                });
+
+
+
+                await _liveService.BeginRequestActivityAsync();
+
+                try
+
+                {
+
+                    keepAlive = await WidgetKeepAlive.BeginAsync();
+
+                    var reply = await _chatService.SendVoiceMessageAsync(
+
+                        wav,
+
+                        gameContextSnapshot,
+
+                        screenshot,
+
+                        _operationCts.Token);
+
+
+
+                    await CoreUiDispatcher.RunOnUiAsync(() =>
+
+                    {
+
+                        ClearPendingScreenshotUi();
+
+                        SafeAddMessageCore("Gemini", reply, null);
+
+                        StatusText.Visibility = Visibility.Collapsed;
+
+                        return System.Threading.Tasks.Task.CompletedTask;
+
+                    });
+
+                }
+
+                finally
+
+                {
+
+                    await WidgetKeepAlive.ReleaseAsync(keepAlive);
+
+                    await _liveService.EndRequestActivityAsync();
+
+                }
 
             }
 
@@ -599,7 +1132,7 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                await ReportErrorAsync("Microfono: " + ex.Message);
+                await SafeReportErrorAsync("Microfono: " + WidgetExceptionFormatter.Format(ex));
 
             }
 
@@ -607,9 +1140,51 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                _liveService.EndVoiceActivity();
+                await SetActionButtonsEnabledAsync(true);
 
-                SetBusy(false);
+
+
+                try
+
+                {
+
+                    await _liveService.EndVoiceActivityAsync();
+
+                }
+
+                catch (Exception ex)
+
+                {
+
+                    WidgetFileLog.Write("Microfono cleanup voz: " + WidgetExceptionFormatter.Format(ex));
+
+                }
+
+            }
+
+        }
+
+
+
+        private void ShowLog_Click(object sender, RoutedEventArgs e)
+
+        {
+
+            var log = WidgetDiagnostics.GetLastError();
+
+            if (string.IsNullOrEmpty(log))
+
+            {
+
+                ShowStatus("Sin entradas en widget-diagnostic.log");
+
+            }
+
+            else
+
+            {
+
+                ShowStatus("Log: " + log);
 
             }
 
@@ -621,7 +1196,9 @@ namespace GeminiAssistant.Widgets
 
         {
 
-            _messages.Clear();
+            ChatSessionStore.Reset();
+
+            MessagesList.ItemsSource = ChatSessionStore.Current.Messages;
 
             _chatService.ClearHistory();
 
@@ -629,43 +1206,43 @@ namespace GeminiAssistant.Widgets
 
 
 
-        private async System.Threading.Tasks.Task AddMessageAsync(string roleLabel, string text, PendingScreenshot screenshot)
+        private System.Threading.Tasks.Task AddMessageAsync(string roleLabel, string text, PendingScreenshot screenshot)
 
         {
 
-            var vm = new ChatMessageViewModel
+            return CoreUiDispatcher.RunOnUiAsync(() =>
 
             {
 
-                RoleLabel = roleLabel,
+                SafeAddMessageCore(roleLabel, text, screenshot);
 
-                Text = text
+                return System.Threading.Tasks.Task.CompletedTask;
 
-            };
+            });
+
+        }
 
 
 
-            if (screenshot?.JpegBytes != null)
+        private void SafeAddMessageCore(string roleLabel, string text, PendingScreenshot screenshot)
+
+        {
+
+            try
 
             {
 
-                vm.Thumbnail = await LoadBitmapAsync(screenshot.JpegBytes);
-
-                vm.ThumbnailVisibility = Visibility.Visible;
+                AddMessageCore(roleLabel, text, screenshot);
 
             }
 
-
-
-            _messages.Add(vm);
-
-            MessagesList.UpdateLayout();
-
-            if (_messages.Count > 0)
+            catch (Exception ex)
 
             {
 
-                MessagesList.ScrollIntoView(_messages[_messages.Count - 1]);
+                WidgetFileLog.Write("AddMessage: " + WidgetExceptionFormatter.Format(ex));
+
+                throw;
 
             }
 
@@ -673,27 +1250,39 @@ namespace GeminiAssistant.Widgets
 
 
 
-        private static async System.Threading.Tasks.Task<BitmapImage> LoadBitmapAsync(byte[] bytes)
+        private void AddMessageCore(string roleLabel, string text, PendingScreenshot screenshot)
 
         {
 
-            var image = new BitmapImage { DecodePixelWidth = 320 };
-
-            using (var stream = new InMemoryRandomAccessStream())
+            var vm = new ChatMessageViewModel
 
             {
 
-                await stream.WriteAsync(bytes.AsBuffer());
+                RoleLabel = roleLabel ?? "?",
 
-                stream.Seek(0);
+                Text = text ?? string.Empty
 
-                image.SetSource(stream);
+            };
+
+
+
+            if (screenshot?.JpegBytes != null && screenshot.JpegBytes.Length > 0)
+
+            {
+
+                var kb = Math.Max(1, screenshot.JpegBytes.Length / 1024);
+
+                var src = DescribeCaptureSource(screenshot.Source);
+
+                vm.AttachmentCaption = "[Screenshot " + src + ", " + kb + " KB]";
+
+                vm.AttachmentVisibility = Visibility.Visible;
 
             }
 
 
 
-            return image;
+            ChatSessionStore.Current.Messages.Add(vm);
 
         }
 

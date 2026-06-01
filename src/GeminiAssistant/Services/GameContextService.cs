@@ -1,6 +1,7 @@
 using System;
 using GeminiAssistant.Models;
 using Microsoft.Gaming.XboxGameBar;
+using Windows.UI.Core;
 
 namespace GeminiAssistant.Services
 {
@@ -8,15 +9,17 @@ namespace GeminiAssistant.Services
     {
         private readonly XboxGameBarWidget _widget;
         private readonly XboxGameBarAppTargetTracker _tracker;
+        private readonly CoreDispatcher _uiDispatcher;
         private bool _targetEventsHooked;
 
         public event EventHandler<GameContextInfo> ContextChanged;
 
         public GameContextInfo Current { get; private set; } = new GameContextInfo();
 
-        public GameContextService(XboxGameBarWidget widget)
+        public GameContextService(XboxGameBarWidget widget, CoreDispatcher uiDispatcher)
         {
             _widget = widget ?? throw new ArgumentNullException(nameof(widget));
+            _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
             _tracker = new XboxGameBarAppTargetTracker(widget);
             _tracker.SettingChanged += OnTrackerSettingChanged;
             Refresh();
@@ -25,7 +28,6 @@ namespace GeminiAssistant.Services
 
         private void OnTrackerSettingChanged(XboxGameBarAppTargetTracker sender, object args)
         {
-            HookTargetChangedIfEnabled();
             Refresh();
         }
 
@@ -51,7 +53,18 @@ namespace GeminiAssistant.Services
             }
         }
 
-        public void Refresh()
+        private void Refresh()
+        {
+            if (_uiDispatcher.HasThreadAccess)
+            {
+                RefreshCore();
+                return;
+            }
+
+            _ = _uiDispatcher.RunAsync(CoreDispatcherPriority.Normal, RefreshCore);
+        }
+
+        private void RefreshCore()
         {
             var info = new GameContextInfo
             {
@@ -72,7 +85,6 @@ namespace GeminiAssistant.Services
             }
             catch
             {
-                // GetTarget may fail when tracking is disabled; other resolvers still run.
             }
 
             Current = info;

@@ -9,7 +9,8 @@
 ### 1. Desplegar desde Visual Studio
 
 - Plataforma: **x64**, configuracion: **Debug**
-- Menu **Compilar** -> **Implementar** (o **F5**)
+- Perfil **GeminiAssistant (Package)** con **Iniciar aplicacion = No** (`doNotLaunchApp` en `Properties/launchSettings.json`). Si VS abre la app en primer plano al depurar, al cerrarla se mata el widget (limitacion de Microsoft).
+- Menu **Compilar** -> **Implementar** (o **F5** solo para desplegar)
 - Debe terminar sin errores de despliegue
 
 ### 2. Verificar que Windows instalo el paquete
@@ -31,7 +32,14 @@ Si dice `NOT INSTALLED`, el widget no puede aparecer: repite el paso 1.
 5. Busca **Gemini Assistant**.
 6. Pulsa **Fijar** / **Pin** para anclarlo a la barra.
 
-### 4. Si sigue sin salir
+### 4. Si el widget se cierra al Enviar o Capturar
+
+1. Reinstala con **Implementar** (perfil con **Iniciar aplicacion = No**).
+2. Reproduce el fallo, vuelve a abrir el widget en Win+G.
+3. Debe aparecer **Diagnostico:** con las ultimas lineas del log, o pulsa **Ver log**.
+4. Copia ese texto (indica si murio en `HTTP POST`, `Send llamada Gemini`, etc.).
+
+### 5. Si sigue sin salir
 
 - Cierra Game Bar por completo (no solo minimizar).
 - En VS: **Implementar** otra vez.
@@ -59,7 +67,8 @@ Widget **Gemini Assistant Settings** en Game Bar (o el engranaje del widget de c
 
 ## Captura y microfono
 
-- **Captura:** selector de ventana de Windows, luego mensaje con miniatura + respuesta de Gemini. Errores aparecen en el chat (rol Sistema).
+- **Captura:** `PrintWindow` sobre la ventana del juego (sin Win+Alt+Impr Pant ni APIs graficas que cierran Win+G).
+- **Enviar:** boton **Enviar** (no Enter); red con `Windows.Web.Http`; trabajo en `XboxGameBarForegroundWorker`; `XboxGameBarWidgetActivity` activa; chat persistido en `ChatSessionStore` si el widget reinicia.
 - **Microfono:** graba 6 s de audio y lo envia a Gemini (ya no usa el reconocimiento de voz de Windows, que falla en Game Bar). Habla en cuanto pulses el boton; no hace falta el cuadro de texto.
 - Permiso de microfono: Configuracion > Privacidad > Microfono > Gemini Assistant.
 - Los botones usan `IsTabStop=False` (UWP no admite `Focusable` en Button).

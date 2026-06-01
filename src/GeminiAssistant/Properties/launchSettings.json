@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "GeminiAssistant (Package)": {
+      "commandName": "MsixPackage",
+      "nativeDebugging": false,
+      "doNotLaunchApp": true
+    }
+  }
+}

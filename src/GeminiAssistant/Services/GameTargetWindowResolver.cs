@@ -106,7 +106,7 @@ namespace GeminiAssistant.Services
                 Add(FindWindowByDisplayName(context.DisplayName, excludeHwnd));
             }
 
-            Add(GetForegroundWindowExcluding(excludeHwnd));
+            // No usar GetForegroundWindow: con Game Bar abierto suele ser el overlay y rompe Win+G.
             Add(FindLargestTitledWindow(context?.DisplayName, excludeHwnd));
             Add(FindLargestCapturableWindow(excludeHwnd));
 
@@ -127,6 +127,55 @@ namespace GeminiAssistant.Services
             }
 
             return MonitorFromWindow(hwnd, MonitorDefaultToNearest);
+        }
+
+        /// <summary>
+        /// Juegos en pantalla completa sin titulo de ventana (borderless).
+        /// </summary>
+        public static IReadOnlyList<IntPtr> ResolveBorderlessLargeWindows(IntPtr excludeHwnd)
+        {
+            var matches = new List<(IntPtr Hwnd, long Area)>();
+
+            EnumWindows(
+                (hWnd, lParam) =>
+                {
+                    if (!IsCapturableWindow(hWnd, excludeHwnd))
+                    {
+                        return true;
+                    }
+
+                    var title = GetWindowTitle(hWnd);
+                    if (!string.IsNullOrWhiteSpace(title))
+                    {
+                        return true;
+                    }
+
+                    GetClientRect(hWnd, out var rect);
+                    var area = rect.Area;
+                    if (area < 640 * 360)
+                    {
+                        return true;
+                    }
+
+                    matches.Add((hWnd, area));
+                    return true;
+                },
+                IntPtr.Zero);
+
+            matches.Sort((a, b) => b.Area.CompareTo(a.Area));
+
+            var result = new List<IntPtr>();
+            foreach (var match in matches)
+            {
+                if (result.Count >= 4)
+                {
+                    break;
+                }
+
+                result.Add(match.Hwnd);
+            }
+
+            return result;
         }
 
         public static IReadOnlyList<string> GetDisplayNameSearchTerms(string displayName)
@@ -485,8 +534,26 @@ namespace GeminiAssistant.Services
                 return false;
             }
 
+            if (IsGameBarHostProcess(pid))
+            {
+                return false;
+            }
+
             GetClientRect(hWnd, out var rect);
             return rect.Width >= MinCaptureWidth && rect.Height >= MinCaptureHeight;
+        }
+
+        private static bool IsGameBarHostProcess(uint processId)
+        {
+            var imagePath = TryGetProcessImagePath(processId);
+            if (string.IsNullOrEmpty(imagePath))
+            {
+                return false;
+            }
+
+            var exe = Path.GetFileNameWithoutExtension(imagePath);
+            return exe.Equals("XboxGameBar", StringComparison.OrdinalIgnoreCase) ||
+                   exe.Equals("GameBarFT", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsGameBarOrWidgetTitle(string title)

@@ -1,0 +1,20 @@
+<Project>
+  <PropertyGroup>
+    <CsWinRTIncludes>Microsoft.Gaming.XboxGameBar</CsWinRTIncludes>
+  </PropertyGroup>
+
+  <!-- Tras limpiar obj, VS puede saltarse MarkupCompilePass1 (incremental) y XamlPreCompile falla sin esta carpeta. -->
+  <Target Name="EnsureIntermediateXamlDirectory"
+          BeforeTargets="XamlPreCompile;MarkupCompilePass1;DesignTimeMarkupCompilationCT"
+          Condition="'@(Page)' != '' Or '@(ApplicationDefinition)' != ''">
+    <MakeDir Directories="$(XamlGeneratedOutputPath)intermediatexaml\" />
+  </Target>
+
+  <Target Name="AddGameBarCsWinRTInputs" BeforeTargets="CsWinRTGenerateProjection">
+    <ItemGroup>
+      <CsWinRTInputs Include="$(PkgMicrosoft_Gaming_XboxGameBar)\lib\uap10.0\Microsoft.Gaming.XboxGameBar.winmd" />
+      <CsWinRTInputs Include="$(PkgMicrosoft_Gaming_XboxGameBar)\private\Microsoft.Gaming.XboxGameBar.Private.winmd" />
+    </ItemGroup>
+  </Target>
+
+</Project>

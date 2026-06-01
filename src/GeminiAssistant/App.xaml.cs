@@ -2,22 +2,44 @@ using System;
 using Microsoft.Gaming.XboxGameBar;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
+using Windows.ApplicationModel.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Navigation;
+using GeminiAssistant.Services;
 using GeminiAssistant.Widgets;
 
 namespace GeminiAssistant
 {
     sealed partial class App : Application
     {
-        private XboxGameBarWidget _chatWidget;
-        private XboxGameBarWidget _settingsWidget;
+        private XboxGameBarWidget? _chatWidget;
+        private XboxGameBarWidget? _settingsWidget;
 
         public App()
         {
             InitializeComponent();
             Suspending += OnSuspending;
+            UnhandledException += OnUnhandledException;
+            CoreApplication.UnhandledErrorDetected += OnUnhandledErrorDetected;
+        }
+
+        private void OnUnhandledErrorDetected(object sender, UnhandledErrorDetectedEventArgs e)
+        {
+            try
+            {
+                e.UnhandledError.Propagate();
+            }
+            catch (Exception ex)
+            {
+                WidgetFileLog.Write("UnhandledError: " + ex.Message);
+            }
+        }
+
+        private void OnUnhandledException(object sender, Windows.UI.Xaml.UnhandledExceptionEventArgs e)
+        {
+            WidgetFileLog.Write("XamlException: " + WidgetExceptionFormatter.Format(e.Exception ?? new Exception(e.Message)));
+            e.Handled = true;
         }
 
         protected override void OnActivated(IActivatedEventArgs args)
@@ -39,11 +61,19 @@ namespace GeminiAssistant
                 return;
             }
 
-            if (!widgetArgs.IsLaunchActivation)
+            WidgetFileLog.Write("OnActivated launch=" + widgetArgs.IsLaunchActivation + " ext=" + widgetArgs.AppExtensionId);
+
+            if (widgetArgs.IsLaunchActivation)
             {
+                ActivateWidgetLaunch(widgetArgs);
                 return;
             }
 
+            ActivateWidgetRepeat(widgetArgs);
+        }
+
+        private static void ActivateWidgetLaunch(XboxGameBarWidgetActivatedEventArgs widgetArgs)
+        {
             var rootFrame = new Frame();
             var flowDirectionSetting = Windows.ApplicationModel.Resources.Core.ResourceContext
                 .GetForCurrentView().QualifierValues["LayoutDirection"];
@@ -54,23 +84,24 @@ namespace GeminiAssistant
             rootFrame.NavigationFailed += OnNavigationFailed;
             Window.Current.Content = rootFrame;
 
+            var app = Current as App;
             if (widgetArgs.AppExtensionId == "ChatWidget")
             {
-                _chatWidget = new XboxGameBarWidget(
+                app._chatWidget = new XboxGameBarWidget(
                     widgetArgs,
                     Window.Current.CoreWindow,
                     rootFrame);
-                rootFrame.Navigate(typeof(ChatWidget), _chatWidget);
-                Window.Current.Closed += ChatWidgetWindow_Closed;
+                rootFrame.Navigate(typeof(ChatWidget), app._chatWidget);
+                Window.Current.Closed += app.ChatWidgetWindow_Closed;
             }
             else if (widgetArgs.AppExtensionId == "SettingsWidget")
             {
-                _settingsWidget = new XboxGameBarWidget(
+                app._settingsWidget = new XboxGameBarWidget(
                     widgetArgs,
                     Window.Current.CoreWindow,
                     rootFrame);
-                rootFrame.Navigate(typeof(SettingsWidget), _settingsWidget);
-                Window.Current.Closed += SettingsWidgetWindow_Closed;
+                rootFrame.Navigate(typeof(SettingsWidget), app._settingsWidget);
+                Window.Current.Closed += app.SettingsWidgetWindow_Closed;
             }
             else
             {
@@ -80,27 +111,35 @@ namespace GeminiAssistant
             Window.Current.Activate();
         }
 
-        protected override void OnLaunched(LaunchActivatedEventArgs e)
+        private void ActivateWidgetRepeat(XboxGameBarWidgetActivatedEventArgs widgetArgs)
         {
+            // Repetir activacion: no crear otro XboxGameBarWidget (patron oficial de Microsoft).
             var rootFrame = Window.Current.Content as Frame;
             if (rootFrame == null)
-            {
-                rootFrame = new Frame();
-                rootFrame.NavigationFailed += OnNavigationFailed;
-                Window.Current.Content = rootFrame;
-            }
-
-            if (e.PrelaunchActivated)
             {
                 return;
             }
 
-            if (rootFrame.Content == null)
+            if (widgetArgs.AppExtensionId == "ChatWidget" && _chatWidget != null)
             {
-                rootFrame.Navigate(typeof(MainPage), e.Arguments);
+                // No volver a navegar si la pagina ya esta cargada (evita reinicio visual del widget).
+                if (rootFrame.Content == null)
+                {
+                    rootFrame.Navigate(typeof(ChatWidget), _chatWidget);
+                }
             }
+            else if (widgetArgs.AppExtensionId == "SettingsWidget" && _settingsWidget != null)
+            {
+                if (rootFrame.Content == null)
+                {
+                    rootFrame.Navigate(typeof(SettingsWidget), _settingsWidget);
+                }
+            }
+        }
 
-            Window.Current.Activate();
+        protected override void OnLaunched(LaunchActivatedEventArgs e)
+        {
+            // El widget vive en Game Bar (OnActivated). No abrir MainPage al implantar desde VS.
         }
 
         private void ChatWidgetWindow_Closed(object sender, Windows.UI.Core.CoreWindowEventArgs e)
@@ -115,16 +154,15 @@ namespace GeminiAssistant
             Window.Current.Closed -= SettingsWidgetWindow_Closed;
         }
 
-        private void OnNavigationFailed(object sender, NavigationFailedEventArgs e)
+        private static void OnNavigationFailed(object sender, NavigationFailedEventArgs e)
         {
-            throw new Exception("Failed to load Page " + e.SourcePageType.FullName);
+            e.Handled = true;
         }
 
         private void OnSuspending(object sender, SuspendingEventArgs e)
         {
+            // No anular _chatWidget aqui: Game Bar puede reactivar el mismo proceso (repeat activation).
             var deferral = e.SuspendingOperation.GetDeferral();
-            _chatWidget = null;
-            _settingsWidget = null;
             deferral.Complete();
         }
     }
