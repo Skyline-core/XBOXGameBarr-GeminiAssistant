@@ -1,5 +1,7 @@
 using System;
 
+using System.Collections.Specialized;
+
 using System.Collections.ObjectModel;
 
 using System.Runtime.InteropServices.WindowsRuntime;
@@ -40,31 +42,28 @@ namespace GeminiAssistant.Widgets
 
     {
 
-        private static readonly TimeSpan VoiceRecordDuration = TimeSpan.FromSeconds(6);
-
-
+        private static readonly TimeSpan VoiceRecordMaxDuration = TimeSpan.FromMinutes(3);
 
         private XboxGameBarWidget _widget;
-
         private GameContextService _gameContext;
-
         private readonly GeminiChatService _chatService = new GeminiChatService();
-
         private readonly GeminiLiveService _liveService = new GeminiLiveService();
-
         private readonly ScreenCaptureService _captureService = new ScreenCaptureService();
-
         private PendingScreenshot _pendingScreenshot;
-
         private CancellationTokenSource _operationCts;
-
+        private AudioRecordingSession _voiceRecordingSession;
+        private bool _isVoiceRecording;
         private bool _sendInProgress;
 
         private readonly SemaphoreSlim _sendGate = new SemaphoreSlim(1, 1);
 
-        private readonly SolidColorBrush _darkBrush = new SolidColorBrush(Color.FromArgb(255, 26, 26, 46));
+        private readonly SolidColorBrush _darkBrush = new SolidColorBrush(Color.FromArgb(255, 27, 27, 31));
 
-        private readonly SolidColorBrush _lightBrush = new SolidColorBrush(Color.FromArgb(255, 219, 219, 219));
+        private readonly SolidColorBrush _lightBrush = new SolidColorBrush(Color.FromArgb(255, 245, 245, 247));
+
+        private readonly SolidColorBrush _gameTrackingOnBrush = new SolidColorBrush(Color.FromArgb(255, 129, 199, 132));
+
+        private readonly SolidColorBrush _gameTrackingOffBrush = new SolidColorBrush(Color.FromArgb(255, 98, 91, 113));
 
 
 
@@ -74,8 +73,12 @@ namespace GeminiAssistant.Widgets
 
             InitializeComponent();
 
-            MessagesList.ItemsSource = ChatSessionStore.Current.Messages;
+            CoreUiDispatcher.Bind(Dispatcher);
 
+            MessagesList.ItemsSource = ChatSessionStore.Current.Messages;
+            ChatSessionStore.Current.Messages.CollectionChanged += OnMessagesCollectionChanged;
+            UpdateSendButtonVisibility();
+            UpdateViewMode();
         }
 
 
@@ -118,6 +121,10 @@ namespace GeminiAssistant.Widgets
 
             UpdateGameBanner(_gameContext.Current);
 
+            ProfileInitialsText.Text = GetUserInitials();
+
+            UpdateViewMode();
+
             WidgetFileLog.Write("ChatWidget abierto");
 
             _sendInProgress = false;
@@ -127,7 +134,7 @@ namespace GeminiAssistant.Widgets
             _pendingScreenshot = ChatSessionStore.Current.PendingScreenshot;
             if (_pendingScreenshot?.JpegBytes != null && _pendingScreenshot.JpegBytes.Length > 0)
             {
-                ShowScreenshotReadyUi(_pendingScreenshot.JpegBytes.Length, _pendingScreenshot.Source);
+                _ = ShowScreenshotReadyUiAsync(_pendingScreenshot);
             }
 
             var log = WidgetDiagnostics.GetLastError();
@@ -222,6 +229,8 @@ namespace GeminiAssistant.Widgets
 
             _liveService.Dispose();
 
+            ChatSessionStore.Current.Messages.CollectionChanged -= OnMessagesCollectionChanged;
+
             CancelOperation();
 
         }
@@ -242,7 +251,42 @@ namespace GeminiAssistant.Widgets
 
         {
 
-            GameContextText.Text = info?.Summary ?? "Sin informacion";
+            var name = info?.DisplayName;
+            var tracking = info?.TrackingEnabled == true;
+            var hasGame = !string.IsNullOrWhiteSpace(name) &&
+                          !name.Equals("Desconocido", StringComparison.OrdinalIgnoreCase);
+
+            if (GameIndicatorLabel != null)
+            {
+                if (!tracking)
+                {
+                    GameIndicatorLabel.Text = "Seguimiento desactivado";
+                }
+                else if (hasGame)
+                {
+                    GameIndicatorLabel.Text = info?.IsGame == true ? "Jugando ahora" : "App en primer plano";
+                }
+                else
+                {
+                    GameIndicatorLabel.Text = "Esperando juego";
+                }
+
+                GameIndicatorText.Text = hasGame
+                    ? name
+                    : (tracking ? "Sin juego detectado" : "Activa seguimiento en Game Bar");
+                GameTrackingDot.Fill = tracking && hasGame ? _gameTrackingOnBrush : _gameTrackingOffBrush;
+            }
+
+            if (string.IsNullOrWhiteSpace(name) || name.Equals("Desconocido", StringComparison.OrdinalIgnoreCase))
+            {
+                GreetingText.Text = "Hola";
+                GameContextText.Text = info?.Summary ?? "Activa seguimiento del juego en Game Bar";
+            }
+            else
+            {
+                GreetingText.Text = "Hola, " + name;
+                GameContextText.Text = info?.Summary ?? string.Empty;
+            }
 
         }
 
@@ -318,6 +362,57 @@ namespace GeminiAssistant.Widgets
 
 
 
+        private void SetVoiceRecordingUi(bool recording)
+        {
+            _isVoiceRecording = recording;
+            CaptureButton.IsEnabled = !recording && !_sendInProgress;
+            if (FabCaptureButton != null)
+            {
+                FabCaptureButton.IsEnabled = !recording && !_sendInProgress;
+            }
+
+            MicButton.IsEnabled = true;
+            if (MicButtonIcon != null)
+            {
+                MicButtonIcon.Glyph = recording ? "\uE71A" : "\uE720";
+            }
+
+            ToolTipService.SetToolTip(
+                MicButton,
+                recording ? "Detener y enviar" : "Grabar voz");
+        }
+
+        private System.Threading.Tasks.Task SetVoiceRecordingUiAsync(bool recording, string status = null)
+        {
+            return RunOnUiAsync(() =>
+            {
+                SetVoiceRecordingUi(recording);
+                if (!string.IsNullOrEmpty(status))
+                {
+                    ShowStatus(status);
+                }
+            });
+        }
+
+        private void DisposeVoiceRecordingSession()
+        {
+            if (_voiceRecordingSession == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _voiceRecordingSession.Dispose();
+            }
+            catch (Exception ex)
+            {
+                WidgetFileLog.Write("Voz liberar sesion: " + WidgetExceptionFormatter.Format(ex));
+            }
+
+            _voiceRecordingSession = null;
+        }
+
         private void SetActionButtonsEnabled(bool enabled)
 
         {
@@ -325,6 +420,11 @@ namespace GeminiAssistant.Widgets
             CaptureButton.IsEnabled = enabled;
 
             MicButton.IsEnabled = enabled;
+
+            if (FabCaptureButton != null)
+            {
+                FabCaptureButton.IsEnabled = enabled;
+            }
 
         }
 
@@ -517,6 +617,52 @@ namespace GeminiAssistant.Widgets
         private void CancelOperation()
 
         {
+
+            if (_isVoiceRecording)
+
+            {
+
+                _isVoiceRecording = false;
+
+                if (_voiceRecordingSession != null)
+
+                {
+
+                    try
+
+                    {
+
+                        _voiceRecordingSession.StopAsync().GetAwaiter().GetResult();
+
+                    }
+
+                    catch
+
+                    {
+
+                    }
+
+                    try
+
+                    {
+
+                        _voiceRecordingSession.Dispose();
+
+                    }
+
+                    catch
+
+                    {
+
+                    }
+
+                    _voiceRecordingSession = null;
+
+                }
+
+                _ = RunOnUiAsync(() => SetVoiceRecordingUi(false));
+
+            }
 
             _operationCts?.Cancel();
 
@@ -802,25 +948,16 @@ namespace GeminiAssistant.Widgets
 
                 keepAlive = await WidgetKeepAlive.BeginAsync();
 
-                var shot = await _captureService.CaptureAsync(gameContextSnapshot);
+                var shot = await Task.Run(async () =>
+                    await _captureService.CaptureAsync(gameContextSnapshot).ConfigureAwait(false))
+                    .ConfigureAwait(true);
 
+                shot = await TryMergeClipboardCaptureOnUiAsync(shot).ConfigureAwait(true);
 
+                await ApplyPendingScreenshotOnUiAsync(shot).ConfigureAwait(true);
 
-                await CoreUiDispatcher.RunOnUiAsync(() =>
-
-                {
-
-                    _pendingScreenshot = shot;
-
-                    ChatSessionStore.Current.PendingScreenshot = shot;
-
-                    ShowScreenshotReadyUi(shot.JpegBytes.Length, shot.Source);
-
-                    ShowStatus("Screenshot listo. Escribe tu mensaje y pulsa Enviar o Enter.");
-
-                    return System.Threading.Tasks.Task.CompletedTask;
-
-                });
+                await RunOnUiAsync(() =>
+                    ShowStatus("Screenshot listo. Escribe tu mensaje y pulsa Enviar o Enter."));
 
             }
 
@@ -868,18 +1005,94 @@ namespace GeminiAssistant.Widgets
 
 
 
-        private void ShowScreenshotReadyUi(int jpegByteCount, string source = null)
-
+        private static async System.Threading.Tasks.Task<PendingScreenshot> TryMergeClipboardCaptureOnUiAsync(
+            PendingScreenshot shot)
         {
+            await CoreUiDispatcher.YieldToUiAsync().ConfigureAwait(true);
 
-            var kb = Math.Max(1, jpegByteCount / 1024);
+            try
+            {
+                var fromClipboard = await ClipboardScreenshotImporter.TryImportJpegAsync()
+                    .ConfigureAwait(true);
+                if (fromClipboard == null || fromClipboard.Length < 100)
+                {
+                    return shot;
+                }
 
-            var sourceLabel = DescribeCaptureSource(source);
+                if (shot?.JpegBytes == null || shot.JpegBytes.Length < 100 ||
+                    fromClipboard.Length > shot.JpegBytes.Length)
+                {
+                    WidgetFileLog.Write("Captura OK portapapeles (UI)");
+                    return new PendingScreenshot { JpegBytes = fromClipboard, Source = "gamebar" };
+                }
+            }
+            catch (Exception ex)
+            {
+                WidgetFileLog.Write("Portapapeles UI: " + WidgetExceptionFormatter.Format(ex));
+            }
 
-            ScreenshotPreviewLabel.Text = "Screenshot listo (" + kb + " KB, " + sourceLabel + "). Pulsa Enviar.";
+            return shot;
+        }
 
-            ScreenshotPreviewPanel.Visibility = Visibility.Visible;
+        private System.Threading.Tasks.Task ApplyPendingScreenshotOnUiAsync(PendingScreenshot screenshot)
+        {
+            return CoreUiDispatcher.RunOnUiAsync(async () =>
+            {
+                if (screenshot?.JpegBytes == null || screenshot.JpegBytes.Length == 0)
+                {
+                    return;
+                }
 
+                var jpegBytes = screenshot.JpegBytes;
+                if (jpegBytes.Length > 220_000)
+                {
+                    jpegBytes = await ScreenshotImageHelper.PrepareForApiAsync(jpegBytes)
+                        .ConfigureAwait(true);
+                }
+
+                await CoreUiDispatcher.YieldToUiAsync().ConfigureAwait(true);
+
+                screenshot.JpegBytes = jpegBytes;
+                _pendingScreenshot = screenshot;
+                ChatSessionStore.Current.PendingScreenshot = screenshot;
+
+                try
+                {
+                    await PendingCaptureStore.SaveAsync(jpegBytes).ConfigureAwait(true);
+                }
+                catch (Exception ex)
+                {
+                    WidgetFileLog.Write("Captura guardar archivo: " + WidgetExceptionFormatter.Format(ex));
+                }
+
+                await CoreUiDispatcher.YieldToUiAsync().ConfigureAwait(true);
+
+                var kb = Math.Max(1, jpegBytes.Length / 1024);
+                var sourceLabel = DescribeCaptureSource(screenshot.Source);
+                ScreenshotPreviewLabel.Text = "Captura lista · " + kb + " KB · " + sourceLabel;
+                ScreenshotPreviewPanel.Visibility = Visibility.Visible;
+
+                var thumbnail = await ScreenshotThumbnailHelper.CreateFromJpegAsync(jpegBytes)
+                    .ConfigureAwait(true);
+
+                await CoreUiDispatcher.YieldToUiAsync().ConfigureAwait(true);
+
+                if (thumbnail != null)
+                {
+                    ScreenshotPreview.Source = thumbnail;
+                    ScreenshotPreviewPlaceholder.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    ScreenshotPreview.Source = null;
+                    ScreenshotPreviewPlaceholder.Visibility = Visibility.Visible;
+                }
+            });
+        }
+
+        private System.Threading.Tasks.Task ShowScreenshotReadyUiAsync(PendingScreenshot screenshot)
+        {
+            return ApplyPendingScreenshotOnUiAsync(screenshot);
         }
 
 
@@ -934,6 +1147,8 @@ namespace GeminiAssistant.Widgets
 
             _ = PendingCaptureStore.ClearAsync();
 
+            ScreenshotPreview.Source = null;
+            ScreenshotPreviewPlaceholder.Visibility = Visibility.Visible;
             ScreenshotPreviewPanel.Visibility = Visibility.Collapsed;
 
         }
@@ -986,7 +1201,7 @@ namespace GeminiAssistant.Widgets
 
                 ChatSessionStore.Current.PendingScreenshot = _pendingScreenshot;
 
-                ShowScreenshotReadyUi(bytes.Length);
+                await ShowScreenshotReadyUiAsync(_pendingScreenshot);
 
                 ShowStatus("Captura recuperada. Escribe tu mensaje y pulsa Enviar.");
 
@@ -1020,15 +1235,19 @@ namespace GeminiAssistant.Widgets
 
 
 
-            CancelOperation();
+            if (_isVoiceRecording)
 
-            _operationCts = new CancellationTokenSource();
+            {
 
-            var screenshot = _pendingScreenshot;
+                await FinishVoiceRecordingAndSendAsync();
+
+                return;
+
+            }
 
 
 
-            if (!MicButton.IsEnabled)
+            if (_sendInProgress || !MicButton.IsEnabled)
 
             {
 
@@ -1038,23 +1257,135 @@ namespace GeminiAssistant.Widgets
 
 
 
-            var gameContextSnapshot = _gameContext.Current;
+            CancelOperation();
 
-            WidgetKeepAlive keepAlive = null;
+            _operationCts = new CancellationTokenSource();
 
             try
 
             {
 
-                await SetActionBusyAsync(true, "Grabando 6 s... Habla AHORA (no hace falta el cuadro de texto).");
-
-
+                await SetVoiceRecordingUiAsync(
+                    true,
+                    "Grabando... Pulsa el microfono otra vez para detener y enviar.");
 
                 await _liveService.BeginVoiceActivityAsync();
 
-                var wav = await CoreUiDispatcher.RunOnUiAsync(
+                _voiceRecordingSession = await CoreUiDispatcher.RunOnUiAsync(
 
-                    () => AudioRecordingService.RecordWavAsync(VoiceRecordDuration, _operationCts.Token));
+                    () => AudioRecordingService.StartRecordingAsync(_operationCts.Token));
+
+
+
+                _ = Task.Run(async () =>
+
+                {
+
+                    try
+
+                    {
+
+                        await Task.Delay(VoiceRecordMaxDuration, _operationCts.Token).ConfigureAwait(false);
+
+                        if (_isVoiceRecording)
+
+                        {
+
+                            await CoreUiDispatcher.RunOnUiAsync(() =>
+
+                                ShowStatus("Tiempo maximo de grabacion, enviando..."));
+
+                            await FinishVoiceRecordingAndSendAsync().ConfigureAwait(false);
+
+                        }
+
+                    }
+
+                    catch (OperationCanceledException)
+
+                    {
+
+                    }
+
+                });
+
+            }
+
+            catch (Exception ex)
+
+            {
+
+                DisposeVoiceRecordingSession();
+
+                await SetVoiceRecordingUiAsync(false);
+
+                await SetActionButtonsEnabledAsync(true);
+
+
+
+                try
+
+                {
+
+                    await _liveService.EndVoiceActivityAsync();
+
+                }
+
+                catch (Exception cleanupEx)
+
+                {
+
+                    WidgetFileLog.Write("Microfono inicio cleanup: " + WidgetExceptionFormatter.Format(cleanupEx));
+
+                }
+
+
+
+                await SafeReportErrorAsync("Microfono: " + WidgetExceptionFormatter.Format(ex));
+
+            }
+
+        }
+
+
+
+        private async System.Threading.Tasks.Task FinishVoiceRecordingAndSendAsync()
+
+        {
+
+            if (!_isVoiceRecording || _voiceRecordingSession == null)
+
+            {
+
+                return;
+
+            }
+
+
+
+            _isVoiceRecording = false;
+
+            var session = _voiceRecordingSession;
+
+            _voiceRecordingSession = null;
+
+            var screenshot = _pendingScreenshot;
+
+            var gameContextSnapshot = _gameContext.Current;
+
+            WidgetKeepAlive keepAlive = null;
+
+
+
+            try
+
+            {
+
+                await SetVoiceRecordingUiAsync(false, "Procesando audio...");
+
+
+
+                var wav = await CoreUiDispatcher.RunOnUiAsync(() => session.StopAsync());
 
 
 
@@ -1062,7 +1393,7 @@ namespace GeminiAssistant.Widgets
 
                 {
 
-                    SafeAddMessageCore("Tu (voz)", "Audio grabado, enviando a Gemini...", screenshot);
+                    SafeAddMessageCore("Tu (voz)", "Analizando voz", screenshot);
 
                     ShowStatus("Gemini transcribe tu voz...");
 
@@ -1088,7 +1419,7 @@ namespace GeminiAssistant.Widgets
 
                         screenshot,
 
-                        _operationCts.Token);
+                        _operationCts?.Token ?? CancellationToken.None);
 
 
 
@@ -1139,6 +1470,24 @@ namespace GeminiAssistant.Widgets
             finally
 
             {
+
+                try
+
+                {
+
+                    session?.Dispose();
+
+                }
+
+                catch (Exception ex)
+
+                {
+
+                    WidgetFileLog.Write("Voz liberar sesion: " + WidgetExceptionFormatter.Format(ex));
+
+                }
+
+                await SetVoiceRecordingUiAsync(false);
 
                 await SetActionButtonsEnabledAsync(true);
 
@@ -1198,9 +1547,17 @@ namespace GeminiAssistant.Widgets
 
             ChatSessionStore.Reset();
 
+            ChatSessionStore.Current.Messages.CollectionChanged += OnMessagesCollectionChanged;
+
             MessagesList.ItemsSource = ChatSessionStore.Current.Messages;
 
             _chatService.ClearHistory();
+
+            UpdateViewMode();
+
+            InputBox.Text = string.Empty;
+
+            UpdateSendButtonVisibility();
 
         }
 
@@ -1254,13 +1611,19 @@ namespace GeminiAssistant.Widgets
 
         {
 
+            var isUser = IsUserRole(roleLabel);
+
             var vm = new ChatMessageViewModel
 
             {
 
                 RoleLabel = roleLabel ?? "?",
 
-                Text = text ?? string.Empty
+                Text = text ?? string.Empty,
+
+                IsUserMessage = isUser,
+
+                AvatarGlyph = isUser ? GetUserInitials() : "✦"
 
             };
 
@@ -1278,11 +1641,212 @@ namespace GeminiAssistant.Widgets
 
                 vm.AttachmentVisibility = Visibility.Visible;
 
+                _ = SetMessageThumbnailAsync(vm, screenshot.JpegBytes);
+
             }
 
 
 
             ChatSessionStore.Current.Messages.Add(vm);
+
+            ScrollMessagesToEnd();
+
+        }
+
+
+
+        private static async System.Threading.Tasks.Task SetMessageThumbnailAsync(
+            ChatMessageViewModel message,
+            byte[] jpegBytes)
+        {
+            var thumbnail = await ScreenshotThumbnailHelper.CreateFromJpegAsync(jpegBytes)
+                .ConfigureAwait(true);
+            if (thumbnail == null)
+            {
+                return;
+            }
+
+            await CoreUiDispatcher.YieldToUiAsync().ConfigureAwait(true);
+            message.Thumbnail = thumbnail;
+            message.ThumbnailVisibility = Visibility.Visible;
+        }
+
+        private static bool IsUserRole(string roleLabel)
+
+        {
+
+            if (string.IsNullOrEmpty(roleLabel))
+            {
+                return false;
+            }
+
+            return roleLabel.StartsWith("Tu", StringComparison.OrdinalIgnoreCase);
+
+        }
+
+
+
+        private static string GetUserInitials()
+
+        {
+
+            return "TU";
+
+        }
+
+
+
+        private void OnMessagesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+
+        {
+
+            _ = Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+
+            {
+
+                UpdateViewMode();
+
+                ScrollMessagesToEnd();
+
+            });
+
+        }
+
+
+
+        private void UpdateViewMode()
+
+        {
+
+            var hasChat = ChatSessionStore.Current.Messages.Count > 0;
+
+            HomePanel.Visibility = hasChat ? Visibility.Collapsed : Visibility.Visible;
+
+            ChatPanel.Visibility = hasChat ? Visibility.Visible : Visibility.Collapsed;
+
+            InputBox.PlaceholderText = hasChat ? "Escribe un mensaje..." : "Pregúntame lo que quieras";
+
+        }
+
+
+
+        private void ScrollMessagesToEnd()
+
+        {
+
+            if (MessagesList.Items.Count == 0)
+            {
+                return;
+            }
+
+            MessagesList.UpdateLayout();
+
+            var last = MessagesList.Items[MessagesList.Items.Count - 1];
+
+            MessagesList.ScrollIntoView(last);
+
+        }
+
+
+
+        private void UpdateSendButtonVisibility()
+
+        {
+
+            var hasText = !string.IsNullOrWhiteSpace(InputBox?.Text);
+
+            SendButton.Visibility = hasText ? Visibility.Visible : Visibility.Collapsed;
+
+        }
+
+
+
+        private void InputBox_TextChanged(object sender, TextChangedEventArgs e)
+
+        {
+
+            UpdateSendButtonVisibility();
+
+        }
+
+
+
+        private void Home_Click(object sender, RoutedEventArgs e)
+
+        {
+
+            ClearChat_Click(sender, e);
+
+            StatusText.Visibility = Visibility.Collapsed;
+
+            ShowGameBarCaptureTip();
+
+        }
+
+
+
+        private async void MenuSettings_Click(object sender, RoutedEventArgs e)
+
+        {
+
+            if (_widget != null)
+            {
+                await _widget.ActivateSettingsAsync();
+            }
+
+        }
+
+
+
+        private void InsertFabPrompt(string text)
+
+        {
+
+            InputBox.Text = text;
+
+            InputBox.SelectionStart = text.Length;
+
+            UpdateSendButtonVisibility();
+
+            InputBox.Focus(FocusState.Programmatic);
+
+        }
+
+
+
+        private void FabAchievements_Click(object sender, RoutedEventArgs e) => InsertFabPrompt("Mostrar mis logros de Xbox");
+
+        private void FabTips_Click(object sender, RoutedEventArgs e) => InsertFabPrompt("Dame tips para este juego");
+
+        private void FabStats_Click(object sender, RoutedEventArgs e) => InsertFabPrompt("¿Cuál es mi estadística de juego?");
+
+
+
+        private async void SuggestionGames_Click(object sender, RoutedEventArgs e)
+
+        {
+
+            await SendUserMessageAsync("Recomendaciones de juegos para mi perfil");
+
+        }
+
+
+
+        private async void SuggestionAchievements_Click(object sender, RoutedEventArgs e)
+
+        {
+
+            await SendUserMessageAsync("Mostrar mis logros de Xbox");
+
+        }
+
+
+
+        private async void SuggestionCapture_Click(object sender, RoutedEventArgs e)
+
+        {
+
+            Capture_Click(sender, e);
 
         }
 

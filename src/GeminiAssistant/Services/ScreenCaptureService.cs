@@ -9,6 +9,9 @@ namespace GeminiAssistant.Services
     {
         private static readonly SemaphoreSlim CaptureLock = new SemaphoreSlim(1, 1);
 
+        /// <summary>
+        /// Captura JPEG sin tocar la UI (seguro desde hilos de fondo).
+        /// </summary>
         public async Task<PendingScreenshot> CaptureAsync(GameContextInfo gameContext)
         {
             await CaptureLock.WaitAsync().ConfigureAwait(false);
@@ -34,7 +37,7 @@ namespace GeminiAssistant.Services
                         if (IsValidJpeg(earlyWindow))
                         {
                             WidgetFileLog.Write("Captura automatica ventana OK (rapida)");
-                            return await FinalizeCaptureAsync(earlyWindow, "ventana-juego").ConfigureAwait(false);
+                            return BuildResult(earlyWindow, "ventana-juego");
                         }
                     }
 
@@ -44,7 +47,7 @@ namespace GeminiAssistant.Services
                         if (IsValidJpeg(earlyImport))
                         {
                             WidgetFileLog.Write("Captura automatica Game Bar OK (rapida)");
-                            return await FinalizeCaptureAsync(earlyImport, "gamebar").ConfigureAwait(false);
+                            return BuildResult(earlyImport, "gamebar");
                         }
                     }
 
@@ -55,14 +58,14 @@ namespace GeminiAssistant.Services
                 if (IsValidJpeg(windowBytes))
                 {
                     WidgetFileLog.Write("Captura automatica ventana OK");
-                    return await FinalizeCaptureAsync(windowBytes, "ventana-juego").ConfigureAwait(false);
+                    return BuildResult(windowBytes, "ventana-juego");
                 }
 
                 var importBytes = await importTask.ConfigureAwait(false);
                 if (IsValidJpeg(importBytes))
                 {
                     WidgetFileLog.Write("Captura automatica Game Bar OK");
-                    return await FinalizeCaptureAsync(importBytes, "gamebar").ConfigureAwait(false);
+                    return BuildResult(importBytes, "gamebar");
                 }
 
                 WidgetFileLog.Write(
@@ -79,21 +82,8 @@ namespace GeminiAssistant.Services
             }
         }
 
-        private static async Task<PendingScreenshot> FinalizeCaptureAsync(byte[] jpegBytes, string source)
+        private static PendingScreenshot BuildResult(byte[] jpegBytes, string source)
         {
-            jpegBytes = await CoreUiDispatcher.RunOnUiAsync(
-                () => ScreenshotImageHelper.PrepareForApiAsync(jpegBytes));
-
-            try
-            {
-                await CoreUiDispatcher.RunOnUiAsync(
-                    () => PendingCaptureStore.SaveAsync(jpegBytes));
-            }
-            catch (Exception ex)
-            {
-                WidgetFileLog.Write("Captura guardar archivo: " + WidgetExceptionFormatter.Format(ex));
-            }
-
             return new PendingScreenshot { JpegBytes = jpegBytes, Source = source };
         }
 

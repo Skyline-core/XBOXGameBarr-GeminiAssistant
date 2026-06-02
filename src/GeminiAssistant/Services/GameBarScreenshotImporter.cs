@@ -55,14 +55,7 @@ namespace GeminiAssistant.Services
                 return fromTemp;
             }
 
-            var fromClipboard = await CoreUiDispatcher.RunOnUiAsync(
-                () => ClipboardScreenshotImporter.TryImportJpegAsync());
-            if (IsValid(fromClipboard))
-            {
-                WidgetFileLog.Write("Captura OK portapapeles");
-                return fromClipboard;
-            }
-
+            // Portapapeles solo desde el hilo UI (ver ChatWidget.TryMergeClipboardCaptureOnUiAsync).
             return null;
         }
 
