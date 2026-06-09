@@ -28,8 +28,11 @@ namespace GeminiAssistant.Services
                 File.AppendAllText(path, line, Encoding.UTF8);
                 TrimIfNeeded(path);
 
-                var shortMsg = message.Length > 400 ? message.Substring(0, 400) : message;
-                ApplicationData.Current.LocalSettings.Values["WidgetLastError"] = shortMsg;
+                if (ShouldHighlightInStatus(message))
+                {
+                    var shortMsg = message.Length > 400 ? message.Substring(0, 400) : message;
+                    ApplicationData.Current.LocalSettings.Values["WidgetLastError"] = shortMsg;
+                }
             }
             catch
             {
@@ -52,13 +55,42 @@ namespace GeminiAssistant.Services
                     return null;
                 }
 
-                var tail = lines.Skip(Math.Max(0, lines.Length - 4)).ToArray();
-                return string.Join(" | ", tail);
+                var tail = lines.Skip(Math.Max(0, lines.Length - 12)).ToArray();
+                var steamLines = tail.Where(l =>
+                    l.IndexOf("Steam ", StringComparison.OrdinalIgnoreCase) >= 0).ToArray();
+                if (steamLines.Length > 0)
+                {
+                    return string.Join(" | ", steamLines.Skip(Math.Max(0, steamLines.Length - 4)));
+                }
+
+                return string.Join(" | ", tail.Skip(Math.Max(0, tail.Length - 4)));
             }
             catch
             {
                 return null;
             }
+        }
+
+        private static bool ShouldHighlightInStatus(string message)
+        {
+            if (string.IsNullOrEmpty(message))
+            {
+                return false;
+            }
+
+            if (message.StartsWith("Steam ", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (message.StartsWith("Send error:", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return message.IndexOf("error", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   message.IndexOf("fallo", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   message.IndexOf("omitido", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static string GetLogPath()

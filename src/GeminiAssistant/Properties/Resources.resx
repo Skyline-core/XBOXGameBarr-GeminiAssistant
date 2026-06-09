@@ -1,101 +1,167 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
-	<!-- 
-		Microsoft ResX Schema
-
-		Version 1.3
-
-		The primary goals of this format is to allow a simple XML format 
-		that is mostly human readable. The generation and parsing of the 
-		various data types are done through the TypeConverter classes 
-		associated with the data types.
-
-		Example:
-
-		... ado.net/XML headers & schema ...
-		<resheader name="resmimetype">text/microsoft-resx</resheader>
-		<resheader name="version">1.3</resheader>
-		<resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
-		<resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
-		<data name="Name1">this is my long string</data>
-		<data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
-		<data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
-			[base64 mime encoded serialized .NET Framework object]
-		</data>
-		<data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
-			[base64 mime encoded string representing a byte array form of the .NET Framework object]
-		</data>
-
-		There are any number of "resheader" rows that contain simple 
-		name/value pairs.
-
-		Each data row contains a name, and value. The row also contains a 
-		type or mimetype. Type corresponds to a .NET class that support 
-		text/value conversion through the TypeConverter architecture. 
-		Classes that don't support this are serialized and stored with the 
-		mimetype set.
-
-		The mimetype is used for serialized objects, and tells the 
-		ResXResourceReader how to depersist the object. This is currently not 
-		extensible. For a given mimetype the value must be set accordingly:
-
-		Note - application/x-microsoft.net.object.binary.base64 is the format 
-		that the ResXResourceWriter will generate, however the reader can 
-		read any of the formats listed below.
-
-		mimetype: application/x-microsoft.net.object.binary.base64
-		value   : The object must be serialized with 
-			: System.Serialization.Formatters.Binary.BinaryFormatter
-			: and then encoded with base64 encoding.
-
-		mimetype: application/x-microsoft.net.object.soap.base64
-		value   : The object must be serialized with 
-			: System.Runtime.Serialization.Formatters.Soap.SoapFormatter
-			: and then encoded with base64 encoding.
-
-		mimetype: application/x-microsoft.net.object.bytearray.base64
-		value   : The object must be serialized into a byte array 
-			: using a System.ComponentModel.TypeConverter
-			: and then encoded with base64 encoding.
-	-->
-	
-	<xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
-		<xsd:element name="root" msdata:IsDataSet="true">
-			<xsd:complexType>
-				<xsd:choice maxOccurs="unbounded">
-					<xsd:element name="data">
-						<xsd:complexType>
-							<xsd:sequence>
-								<xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
-								<xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
-							</xsd:sequence>
-							<xsd:attribute name="name" type="xsd:string" msdata:Ordinal="1" />
-							<xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
-							<xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
-						</xsd:complexType>
-					</xsd:element>
-					<xsd:element name="resheader">
-						<xsd:complexType>
-							<xsd:sequence>
-								<xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
-							</xsd:sequence>
-							<xsd:attribute name="name" type="xsd:string" use="required" />
-						</xsd:complexType>
-					</xsd:element>
-				</xsd:choice>
-			</xsd:complexType>
-		</xsd:element>
-	</xsd:schema>
-	<resheader name="resmimetype">
-		<value>text/microsoft-resx</value>
-	</resheader>
-	<resheader name="version">
-		<value>1.3</value>
-	</resheader>
-	<resheader name="reader">
-		<value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.3500.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-	</resheader>
-	<resheader name="writer">
-		<value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.3500.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-	</resheader>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Settings_Title" xml:space="preserve"><value>Ajustes — Gemini Assistant</value></data>
+  <data name="Settings_Language" xml:space="preserve"><value>Idioma</value></data>
+  <data name="Settings_Language_Auto" xml:space="preserve"><value>Automático (sistema)</value></data>
+  <data name="Settings_Language_Spanish" xml:space="preserve"><value>Español</value></data>
+  <data name="Settings_Language_English" xml:space="preserve"><value>English</value></data>
+  <data name="Settings_ApiKeyLabel" xml:space="preserve"><value>API key de Google AI Studio</value></data>
+  <data name="Settings_ApiKeyPlaceholder" xml:space="preserve"><value>Pega tu API key</value></data>
+  <data name="Settings_ApiKeyHint" xml:space="preserve"><value>Obtén una en aistudio.google.com/apikey</value></data>
+  <data name="Settings_SteamKeyLabel" xml:space="preserve"><value>Steam Web API Key</value></data>
+  <data name="Settings_SteamIdLabel" xml:space="preserve"><value>SteamID64</value></data>
+  <data name="Settings_SteamHint" xml:space="preserve"><value>Key en steamcommunity.com/dev (32 caracteres). SteamID64 en steamid.io. Perfil en Público y también Detalles del juego en Público (Steam &gt; Editar perfil &gt; Privacidad). Si ves error 403: no uses lista blanca de IP con 127.0.0.1.</value></data>
+  <data name="Settings_Save" xml:space="preserve"><value>Guardar</value></data>
+  <data name="Settings_Saved" xml:space="preserve"><value>Guardado.</value></data>
+  <data name="Settings_SavedLanguageNote" xml:space="preserve"><value> Idioma actualizado.</value></data>
+  <data name="Settings_CaptureTitle" xml:space="preserve"><value>Captura de pantalla</value></data>
+  <data name="Settings_CaptureHint" xml:space="preserve"><value>Al pulsar Capturar, Windows puede pedir permiso (elige Permitir). Si falla: Configuración &gt; Privacidad y seguridad &gt; Capturas de pantalla &gt; Gemini Assistant. Haz clic en el juego antes de capturar si Game Bar está abierto.</value></data>
+  <data name="Chat_ProfileInitials" xml:space="preserve"><value>TU</value></data>
+  <data name="Chat_TooltipHome" xml:space="preserve"><value>Inicio</value></data>
+  <data name="Chat_TooltipMore" xml:space="preserve"><value>Más opciones</value></data>
+  <data name="Chat_MenuSettings" xml:space="preserve"><value>Ajustes</value></data>
+  <data name="Chat_MenuClear" xml:space="preserve"><value>Limpiar chat</value></data>
+  <data name="Chat_MenuLog" xml:space="preserve"><value>Ver log</value></data>
+  <data name="Chat_GameActive" xml:space="preserve"><value>Juego activo</value></data>
+  <data name="Chat_DetectingGame" xml:space="preserve"><value>Detectando juego...</value></data>
+  <data name="Chat_GreetingHello" xml:space="preserve"><value>Hola</value></data>
+  <data name="Chat_GreetingHelpPart1" xml:space="preserve"><value>¿En qué puedo </value></data>
+  <data name="Chat_GreetingHelpPart2" xml:space="preserve"><value>ayudarte hoy?</value></data>
+  <data name="Chat_SuggestionGamesTitle" xml:space="preserve"><value>Recomendaciones de juegos</value></data>
+  <data name="Chat_SuggestionGamesSub" xml:space="preserve"><value>Basado en tu sesión activa</value></data>
+  <data name="Chat_SuggestionSteamTitle" xml:space="preserve"><value>Mis logros de Steam</value></data>
+  <data name="Chat_SuggestionSteamSub" xml:space="preserve"><value>Consulta logros reales vía Steam Web API</value></data>
+  <data name="Chat_SuggestionCaptureTitle" xml:space="preserve"><value>Analizar captura</value></data>
+  <data name="Chat_SuggestionCaptureSub" xml:space="preserve"><value>Captura la pantalla del juego</value></data>
+  <data name="Chat_FabCapture" xml:space="preserve"><value>Capturar</value></data>
+  <data name="Chat_FabAchievements" xml:space="preserve"><value>Logros</value></data>
+  <data name="Chat_FabTips" xml:space="preserve"><value>Tips</value></data>
+  <data name="Chat_FabStats" xml:space="preserve"><value>Stats</value></data>
+  <data name="Chat_InputPlaceholder" xml:space="preserve"><value>Pregúntame lo que quieras</value></data>
+  <data name="Chat_TooltipRemoveCapture" xml:space="preserve"><value>Quitar captura</value></data>
+  <data name="Chat_TooltipCapture" xml:space="preserve"><value>Capturar pantalla</value></data>
+  <data name="Chat_TooltipMic" xml:space="preserve"><value>Grabar voz</value></data>
+  <data name="Chat_TooltipSend" xml:space="preserve"><value>Enviar</value></data>
+  <data name="Game_TrackingOff" xml:space="preserve"><value>Seguimiento desactivado</value></data>
+  <data name="Game_TrackingOffHint" xml:space="preserve"><value>Activa seguimiento en Game Bar</value></data>
+  <data name="Game_PlayingNow" xml:space="preserve"><value>Jugando ahora</value></data>
+  <data name="Game_AppForeground" xml:space="preserve"><value>App en primer plano</value></data>
+  <data name="Game_WaitingGame" xml:space="preserve"><value>Esperando juego</value></data>
+  <data name="Game_NoGameDetected" xml:space="preserve"><value>Sin juego detectado</value></data>
+  <data name="Game_EnableTracking" xml:space="preserve"><value>Activa seguimiento del juego en Game Bar</value></data>
+  <data name="Game_Unknown" xml:space="preserve"><value>Desconocido</value></data>
+  <data name="Ctx_TrackingDisabled" xml:space="preserve"><value>Seguimiento desactivado en Game Bar</value></data>
+  <data name="Ctx_GameLabel" xml:space="preserve"><value>juego</value></data>
+  <data name="Ctx_AppLabel" xml:space="preserve"><value>aplicación</value></data>
+  <data name="Ctx_FullscreenSuffix" xml:space="preserve"><value>, pantalla completa</value></data>
+  <data name="Ctx_UnknownInstruction" xml:space="preserve"><value>Eres un asistente de gaming en Xbox Game Bar. El seguimiento del juego activo está desactivado; da consejos generales si no conoces el título. Responde en español.</value></data>
+  <data name="Ctx_GameInstruction" xml:space="preserve"><value>Eres un asistente de gaming en Xbox Game Bar. El jugador está en: {0}. Es juego: {1}. Pantalla completa: {2}. AumId: {3}. TitleId: {4}. Da consejos, estrategias y respuestas relevantes a ese título. Si el mensaje incluye datos de Steam Web API, combínalos con el contexto del juego activo. Responde en español.</value></data>
+  <data name="Status_NoApiKey" xml:space="preserve"><value>Configura tu API key en Ajustes (engranaje en Game Bar).</value></data>
+  <data name="Status_CapturePermission" xml:space="preserve"><value>Captura: activa permiso de captura de pantalla en Ajustes de Windows.</value></data>
+  <data name="Status_WaitSend" xml:space="preserve"><value>Espera a que termine el envío anterior.</value></data>
+  <data name="Status_QueryingSteam" xml:space="preserve"><value>Consultando Steam...</value></data>
+  <data name="Status_SteamOk" xml:space="preserve"><value>Steam OK — enviando a Gemini...</value></data>
+  <data name="Status_SendingGemini" xml:space="preserve"><value>Enviando a Gemini...</value></data>
+  <data name="Status_Capturing" xml:space="preserve"><value>Capturando pantalla del juego...</value></data>
+  <data name="Status_ScreenshotReady" xml:space="preserve"><value>Captura lista. Escribe tu mensaje y pulsa Enviar o Enter.</value></data>
+  <data name="Status_CaptureRestored" xml:space="preserve"><value>Captura recuperada. Escribe tu mensaje y pulsa Enviar.</value></data>
+  <data name="Status_CaptureTip" xml:space="preserve"><value>Capturar hace screenshot del juego automáticamente. Enter envía.</value></data>
+  <data name="Status_Recording" xml:space="preserve"><value>Grabando... Pulsa el micrófono otra vez para detener y enviar.</value></data>
+  <data name="Status_RecordingMax" xml:space="preserve"><value>Tiempo máximo de grabación, enviando...</value></data>
+  <data name="Status_ProcessingAudio" xml:space="preserve"><value>Procesando audio...</value></data>
+  <data name="Status_Transcribing" xml:space="preserve"><value>Gemini transcribe tu voz...</value></data>
+  <data name="Status_NoLog" xml:space="preserve"><value>Sin entradas en widget-diagnostic.log</value></data>
+  <data name="Status_CaptureRestoreFailed" xml:space="preserve"><value>No se pudo restaurar la captura: {0}</value></data>
+  <data name="Status_QueryingSteamAchievements" xml:space="preserve"><value>Consultando logros en Steam...</value></data>
+  <data name="Status_QueryingSteamProfile" xml:space="preserve"><value>Consultando perfil de Steam...</value></data>
+  <data name="Status_Diagnostic" xml:space="preserve"><value>Diagnóstico: {0}</value></data>
+  <data name="Status_LogPrefix" xml:space="preserve"><value>Log: {0}</value></data>
+  <data name="Error_Unknown" xml:space="preserve"><value>Error desconocido (el widget pudo cerrarse durante la petición).</value></data>
+  <data name="Error_WriteCapturePrompt" xml:space="preserve"><value>Escribe qué quieres saber sobre la captura y pulsa Enviar.</value></data>
+  <data name="Error_MissingApiKey" xml:space="preserve"><value>Falta la API key. Abre Ajustes del widget.</value></data>
+  <data name="Error_MissingSteam" xml:space="preserve"><value>Para preguntas sobre Steam o logros, configura Steam Web API Key y SteamID64 en Ajustes.</value></data>
+  <data name="Error_MicDenied" xml:space="preserve"><value>Permiso de micrófono denegado. Configuración &gt; Privacidad &gt; Micrófono &gt; Gemini Assistant.</value></data>
+  <data name="Error_SpeechInit" xml:space="preserve"><value>No se pudo inicializar el reconocimiento de voz. Instala el paquete de idioma de voz en Windows.</value></data>
+  <data name="Msg_User" xml:space="preserve"><value>Tu</value></data>
+  <data name="Msg_UserVoice" xml:space="preserve"><value>Tu (voz)</value></data>
+  <data name="Msg_Gemini" xml:space="preserve"><value>Gemini</value></data>
+  <data name="Msg_System" xml:space="preserve"><value>Sistema</value></data>
+  <data name="Msg_AnalyzingVoice" xml:space="preserve"><value>Analizando voz</value></data>
+  <data name="Voice_StopSend" xml:space="preserve"><value>Detener y enviar</value></data>
+  <data name="Capture_ReadyLabel" xml:space="preserve"><value>Captura lista · {0} KB · {1}</value></data>
+  <data name="Capture_Source_Default" xml:space="preserve"><value>captura</value></data>
+  <data name="Capture_Source_Window" xml:space="preserve"><value>ventana elegida</value></data>
+  <data name="Capture_Source_GameWindow" xml:space="preserve"><value>ventana del juego</value></data>
+  <data name="Capture_Source_GameBar" xml:space="preserve"><value>Game Bar</value></data>
+  <data name="Gemini_SteamConfigured" xml:space="preserve"><value> El usuario tiene Steam Web API Key y SteamID64 guardados en Ajustes del widget; el sistema consulta Steam automáticamente en cada pregunta de logros. NUNCA pidas al usuario que configure, pegue o comparta la API key ni el SteamID64. Cuando el mensaje incluya el bloque 'Datos reales de Steam Web API', usa esos datos como fuente verificada y responde con ellos. Si el bloque corresponde a un juego distinto al de turnos anteriores, usa solo el bloque nuevo. No digas que el perfil es privado si los datos indican otro problema (por ejemplo biblioteca o logros ocultos con perfil público). No digas que no tienes acceso a Steam si esos datos están presentes.</value></data>
+  <data name="Gemini_SteamContextSuffix" xml:space="preserve"><value> No pidas API key ni SteamID64 al usuario; ya están configurados en el widget. No inventes ni digas que el perfil es privado si los datos ya están arriba.</value></data>
+  <data name="Gemini_RespondClearly" xml:space="preserve"><value> Responde claro y directo; evita relleno innecesario.</value></data>
+  <data name="Chat_InputPlaceholderActive" xml:space="preserve"><value>Escribe un mensaje...</value></data>
+  <data name="Chat_UserInitials" xml:space="preserve"><value>TU</value></data>
+  <data name="Error_SteamNoResponse" xml:space="preserve"><value>No se obtuvo respuesta de Steam. Revisa la key y el SteamID64 en Ajustes (deben ser los mismos que en el navegador).</value></data>
+  <data name="Error_VoiceCancelled" xml:space="preserve"><value>Grabación de voz cancelada.</value></data>
+  <data name="Error_CapturePrefix" xml:space="preserve"><value>Captura: {0}</value></data>
+  <data name="Error_MicPrefix" xml:space="preserve"><value>Micrófono: {0}</value></data>
+  <data name="Error_SteamPrefix" xml:space="preserve"><value>Steam: {0}</value></data>
+  <data name="Prompt_SteamAchievementsGemini" xml:space="preserve"><value>Analiza mis logros de Steam para este juego. Dime cuáles me faltan, cuáles son más fáciles de conseguir ahora y tips concretos para desbloquearlos.</value></data>
+  <data name="Prompt_SteamAchievementsDisplay" xml:space="preserve"><value>Analizar logros de Steam: {0} ({1}/{2})</value></data>
+  <data name="Prompt_SteamProfileGemini" xml:space="preserve"><value>Analiza mi perfil de Steam: resumen de mi biblioteca, juegos más jugados y sugerencias útiles basadas en mis horas.</value></data>
+  <data name="Prompt_SteamProfileDisplay" xml:space="preserve"><value>Analizar perfil de Steam: {0} ({1} juegos)</value></data>
+  <data name="Prompt_FabTips" xml:space="preserve"><value>Dame tips para este juego</value></data>
+  <data name="Prompt_GameRecommendations" xml:space="preserve"><value>Recomendaciones de juegos para mi perfil</value></data>
+  <data name="Gemini_VoiceInstruction" xml:space="preserve"><value>Escucha el audio del jugador. Transcríbelo y responde como asistente de gaming. Si no hay voz audible, dilo claramente.</value></data>
+  <data name="Gemini_EmptyAudio" xml:space="preserve"><value>El audio grabado está vacío.</value></data>
+  <data name="Gemini_ConfigApiKey" xml:space="preserve"><value>Configura tu API key en Ajustes del widget.</value></data>
+  <data name="Gemini_ResponseBlocked" xml:space="preserve"><value>Respuesta bloqueada: {0}</value></data>
+  <data name="Gemini_NoTextResponse" xml:space="preserve"><value>Gemini no devolvió texto en la respuesta.</value></data>
+  <data name="Gemini_ResponseTruncated" xml:space="preserve"><value>[Respuesta cortada por límite de longitud. Pide más detalle si lo necesitas.]</value></data>
+  <data name="Gemini_ApiError" xml:space="preserve"><value>Gemini API ({0}): {1}</value></data>
+  <data name="Gemini_ApiErrorGeneric" xml:space="preserve"><value>Gemini API error ({0})</value></data>
+  <data name="Steam_ProfileNotFound" xml:space="preserve"><value>No se encontró el perfil de Steam. Revisa el SteamID64.</value></data>
+  <data name="Steam_QueryFailed" xml:space="preserve"><value>No se pudo consultar Steam: {0}</value></data>
+  <data name="Steam_NoGameSpecified" xml:space="preserve"><value>No se indicó ningún juego. Comprueba el nombre exacto del juego en Steam.</value></data>
+  <data name="Steam_GameNotFound" xml:space="preserve"><value>No encontré "{0}" en tu biblioteca de Steam ({1} juegos). Comprueba el nombre exacto del juego en Steam.</value></data>
+  <data name="Steam_GameAmbiguous" xml:space="preserve"><value>Encontré varios juegos parecidos a "{0}" en tu biblioteca de Steam:</value></data>
+  <data name="Steam_GameAmbiguousAsk" xml:space="preserve"><value>¿De cuál quieres información? Responde con el nombre exacto de la lista.</value></data>
+  <data name="Steam_GameNotFoundFuzzy" xml:space="preserve"><value>No encontré una coincidencia clara para "{0}". ¿Te refieres a alguno de estos juegos de tu biblioteca?</value></data>
+  <data name="Steam_GameNotFoundAsk" xml:space="preserve"><value>Indica el nombre exacto tal como aparece en Steam.</value></data>
+  <data name="Steam_GameMatchLine" xml:space="preserve"><value>• {0}</value></data>
+  <data name="Steam_NoGameInQuery" xml:space="preserve"><value>No identifiqué qué juego quieres consultar. Escribe el nombre (aunque no sea exacto) o di "este juego" si tienes el juego en primer plano.</value></data>
+  <data name="Steam_ErrorPrefix" xml:space="preserve"><value>Error al consultar Steam: </value></data>
+  <data name="Steam_ClarificationPrefix" xml:space="preserve"><value>Steam — aclaración necesaria: </value></data>
+  <data name="Steam_MissingCredentials" xml:space="preserve"><value>Configura Steam Web API Key y SteamID64 en Ajustes del widget.</value></data>
+  <data name="Steam_IncompleteApiKey" xml:space="preserve"><value>La Steam Web API Key parece incompleta. Cópiala de nuevo desde steamcommunity.com/dev.</value></data>
+  <data name="Steam_InvalidSteamId" xml:space="preserve"><value>El SteamID64 no parece válido. Debe ser un número de 17 dígitos (7656119...).</value></data>
+  <data name="Steam_EmptyResponse" xml:space="preserve"><value>Steam devolvió respuesta vacía (HTTP {0}).</value></data>
+  <data name="Steam_ParseAchievementsFailed" xml:space="preserve"><value>No se pudo leer la respuesta de logros de Steam.</value></data>
+  <data name="Steam_Http401" xml:space="preserve"><value>Steam rechazó la API Key (HTTP 401). Copia la key de steamcommunity.com/dev sin espacios.</value></data>
+  <data name="Steam_Http403" xml:space="preserve"><value>Steam rechazó el acceso (HTTP 403). Comprueba la key en Ajustes del widget (debe ser la misma que funciona en el navegador). Si la key tiene lista blanca de IP, déjala vacía.</value></data>
+  <data name="Steam_Http429" xml:space="preserve"><value>Steam limitó las peticiones (HTTP 429). Espera un minuto e inténtalo de nuevo.</value></data>
+  <data name="Steam_HttpGeneric" xml:space="preserve"><value>Steam respondió HTTP {0}.</value></data>
+  <data name="Steam_DetailSuffix" xml:space="preserve"><value> Detalle: {0}</value></data>
+  <data name="Steam_Visibility_Private" xml:space="preserve"><value>privado (1)</value></data>
+  <data name="Steam_Visibility_Friends" xml:space="preserve"><value>solo amigos (2)</value></data>
+  <data name="Steam_Visibility_Public" xml:space="preserve"><value>público (3)</value></data>
+  <data name="Steam_Visibility_Registered" xml:space="preserve"><value>usuarios registrados (4)</value></data>
+  <data name="Steam_Visibility_Extended" xml:space="preserve"><value>público extendido (5)</value></data>
+  <data name="Steam_Visibility_Unknown" xml:space="preserve"><value>desconocido ({0})</value></data>
+  <data name="Steam_ProfileHidden" xml:space="preserve"><value>La API de Steam ve tu perfil como {0}. Para la Web API debe estar en Público (no Solo amigos). Steam &gt; tu perfil &gt; Editar perfil &gt; Privacidad &gt; Mi perfil: Público.</value></data>
+  <data name="Steam_GameDetailsHidden" xml:space="preserve"><value>Tu perfil es {0} para la API, pero la biblioteca o los logros no son accesibles. Steam &gt; tu perfil &gt; Editar perfil &gt; Privacidad &gt; pon en Público: Detalles del juego (y Logros de juegos si aparece). El perfil puede verse bien en el navegador con tu sesión iniciada, pero la API consulta como visitante externo.</value></data>
+  <data name="Steam_AchievementsBlocked" xml:space="preserve"><value>Steam permite ver tu biblioteca pero bloquea los logros (la API responde "Profile is not public"). No es un fallo de la API key.</value></data>
+  <data name="Steam_Checklist_Header" xml:space="preserve"><value>Diagnóstico de la API de Steam:</value></data>
+  <data name="Steam_Checklist_ProfileQueried" xml:space="preserve"><value>- Perfil consultado: {0}</value></data>
+  <data name="Steam_Checklist_VisibilityLine" xml:space="preserve"><value>- communityvisibilitystate: {0} ({1})</value></data>
+  <data name="Steam_Checklist_NotPublicNote" xml:space="preserve"><value>  La API NO ve tu perfil como público (debe ser 3). Ajusta Mi perfil en Privacidad, no solo Detalles del juego.</value></data>
+  <data name="Steam_Checklist_AlsoCheck" xml:space="preserve"><value>Comprueba también:</value></data>
+  <data name="Steam_Checklist_Item1" xml:space="preserve"><value>1. Steam &gt; Biblioteca &gt; clic derecho en el juego &gt; Gestionar &gt; NO debe estar "Marcar como privado".</value></data>
+  <data name="Steam_Checklist_Item2" xml:space="preserve"><value>2. Privacidad: cambia Detalles del juego a Solo amigos, guarda, vuelve a Público y reinicia el cliente Steam.</value></data>
+  <data name="Steam_Checklist_Item3" xml:space="preserve"><value>3. Abre en ventana privada (sin login):</value></data>
+  <data name="Steam_Checklist_GameLine" xml:space="preserve"><value>   (juego: {0})</value></data>
+  <data name="Steam_Checklist_Item4" xml:space="preserve"><value>4. Verifica el SteamID64 en Ajustes con GetPlayerSummaries en el navegador.</value></data>
+  <data name="Steam_Checklist_Item5" xml:space="preserve"><value>5. Cuenta limitada de Steam (&lt;5 USD) puede bloquear datos públicos.</value></data>
+  <data name="Steam_Checklist_Item6" xml:space="preserve"><value>6. Los cambios de privacidad pueden tardar varios minutos en propagarse.</value></data>
 </root>

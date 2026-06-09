@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
@@ -8,15 +8,15 @@
   IgnorableNamespaces="uap mp uap3 rescap">
 
   <Identity
-    Name="GeminiAssistant"
-    Publisher="CN=Developer"
-    Version="1.0.1.0" />
+    Name="ITSOFTSYS.GeminiAssistant"
+    Publisher="CN=F501727E-B88A-44F3-99F9-D0461D2E1C36"
+    Version="1.0.6.0" />
 
-  <mp:PhoneIdentity PhoneProductId="b8e4f1a2-3c5d-4e6f-9a0b-1c2d3e4f5a6b" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+  <mp:PhoneIdentity PhoneProductId="f63107a6-572a-4b55-bf56-dd883c5a2b58" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
     <DisplayName>Gemini Assistant</DisplayName>
-    <PublisherDisplayName>Developer</PublisherDisplayName>
+    <PublisherDisplayName>ITSOFTSYS</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 

@@ -4,7 +4,7 @@ using Windows.UI.Xaml.Controls;
 
 namespace GeminiAssistant.Widgets
 {
-    public sealed class ChatMessageTemplateSelector : DataTemplateSelector
+    public sealed partial class ChatMessageTemplateSelector : DataTemplateSelector
     {
         public DataTemplate UserMessageTemplate { get; set; }
         public DataTemplate GeminiMessageTemplate { get; set; }

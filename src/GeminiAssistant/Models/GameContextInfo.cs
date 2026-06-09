@@ -1,9 +1,11 @@
+using GeminiAssistant.Services;
+
 namespace GeminiAssistant.Models
 {
     public sealed class GameContextInfo
     {
         public bool TrackingEnabled { get; set; }
-        public string DisplayName { get; set; } = "Desconocido";
+        public string DisplayName { get; set; } = "";
         public string AumId { get; set; } = "";
         public string TitleId { get; set; } = "";
         public bool IsGame { get; set; }
@@ -15,13 +17,14 @@ namespace GeminiAssistant.Models
             {
                 if (!TrackingEnabled)
                 {
-                    return "Seguimiento desactivado en Game Bar";
+                    return LocalizedStrings.Ctx_TrackingDisabled;
                 }
 
-                var gameLabel = IsGame ? "juego" : "aplicación";
-                var fs = IsFullscreen ? ", pantalla completa" : "";
+                var gameLabel = IsGame ? LocalizedStrings.Ctx_GameLabel : LocalizedStrings.Ctx_AppLabel;
+                var fs = IsFullscreen ? LocalizedStrings.Ctx_FullscreenSuffix : "";
                 var title = string.IsNullOrEmpty(TitleId) ? "" : $", titleId={TitleId}";
-                return $"{DisplayName} ({gameLabel}{fs}{title})";
+                var name = string.IsNullOrWhiteSpace(DisplayName) ? LocalizedStrings.Game_Unknown : DisplayName;
+                return $"{name} ({gameLabel}{fs}{title})";
             }
         }
 
@@ -29,14 +32,17 @@ namespace GeminiAssistant.Models
         {
             if (!TrackingEnabled)
             {
-                return "Eres un asistente de gaming en Xbox Game Bar. El seguimiento del juego activo está desactivado; da consejos generales si no conoces el título.";
+                return LocalizedStrings.Ctx_UnknownInstruction;
             }
 
-            return "Eres un asistente de gaming en Xbox Game Bar. " +
-                   $"El jugador está en: {DisplayName}. " +
-                   $"Es juego: {IsGame}. Pantalla completa: {IsFullscreen}. " +
-                   $"AumId: {AumId}. TitleId: {TitleId}. " +
-                   "Da consejos, estrategias y respuestas relevantes a ese título. Responde en el idioma del usuario.";
+            var name = string.IsNullOrWhiteSpace(DisplayName) ? LocalizedStrings.Game_Unknown : DisplayName;
+            return string.Format(
+                LocalizedStrings.Ctx_GameInstruction,
+                name,
+                IsGame,
+                IsFullscreen,
+                AumId,
+                TitleId);
         }
     }
 }

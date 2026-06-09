@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <!-- VS "Crear paquetes" y deploy buscan bin\x64\Release\AppX, no bin\x64\Release\net10.0-...\AppX. -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- Avisos de nulabilidad heredados del codigo UWP; no bloquean el empaquetado. -->
+    <NoWarn>$(NoWarn);CS8618;CS8602;CS8603;CS8604;CS8625;CS8767;CS8765;CS8669;CS8073;CS8600;CS8601;CS8620;CS8619;CS8762</NoWarn>
+  </PropertyGroup>
+</Project>

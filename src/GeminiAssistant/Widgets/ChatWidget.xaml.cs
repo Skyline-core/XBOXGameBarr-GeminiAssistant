@@ -49,11 +49,13 @@ namespace GeminiAssistant.Widgets
         private readonly GeminiChatService _chatService = new GeminiChatService();
         private readonly GeminiLiveService _liveService = new GeminiLiveService();
         private readonly ScreenCaptureService _captureService = new ScreenCaptureService();
+        private readonly SteamWebApiService _steamService = new SteamWebApiService();
         private PendingScreenshot _pendingScreenshot;
         private CancellationTokenSource _operationCts;
         private AudioRecordingSession _voiceRecordingSession;
         private bool _isVoiceRecording;
         private bool _sendInProgress;
+        private string _lastSteamGameQuery;
 
         private readonly SemaphoreSlim _sendGate = new SemaphoreSlim(1, 1);
 
@@ -118,12 +120,7 @@ namespace GeminiAssistant.Widgets
             _gameContext.ContextChanged += OnGameContextChanged;
 
             ApplyTheme();
-
-            UpdateGameBanner(_gameContext.Current);
-
-            ProfileInitialsText.Text = GetUserInitials();
-
-            UpdateViewMode();
+            RefreshLocalization();
 
             WidgetFileLog.Write("ChatWidget abierto");
 
@@ -140,7 +137,7 @@ namespace GeminiAssistant.Widgets
             var log = WidgetDiagnostics.GetLastError();
             if (!string.IsNullOrEmpty(log))
             {
-                ShowStatus("Diagnostico: " + log);
+                ShowStatus(LocalizedStrings.Format("Status_Diagnostic", log));
             }
             else
             {
@@ -187,7 +184,7 @@ namespace GeminiAssistant.Widgets
 
                 {
 
-                    ShowStatus("Captura: activa permiso de captura de pantalla en Ajustes de Windows.");
+                    ShowStatus(LocalizedStrings.Status_CapturePermission);
 
                 }
 
@@ -253,38 +250,39 @@ namespace GeminiAssistant.Widgets
 
             var name = info?.DisplayName;
             var tracking = info?.TrackingEnabled == true;
-            var hasGame = !string.IsNullOrWhiteSpace(name) &&
-                          !name.Equals("Desconocido", StringComparison.OrdinalIgnoreCase);
+            var hasGame = !LocalizedStrings.IsUnknownGameName(name);
 
             if (GameIndicatorLabel != null)
             {
                 if (!tracking)
                 {
-                    GameIndicatorLabel.Text = "Seguimiento desactivado";
+                    GameIndicatorLabel.Text = LocalizedStrings.Game_TrackingOff;
                 }
                 else if (hasGame)
                 {
-                    GameIndicatorLabel.Text = info?.IsGame == true ? "Jugando ahora" : "App en primer plano";
+                    GameIndicatorLabel.Text = info?.IsGame == true
+                        ? LocalizedStrings.Game_PlayingNow
+                        : LocalizedStrings.Game_AppForeground;
                 }
                 else
                 {
-                    GameIndicatorLabel.Text = "Esperando juego";
+                    GameIndicatorLabel.Text = LocalizedStrings.Game_WaitingGame;
                 }
 
                 GameIndicatorText.Text = hasGame
                     ? name
-                    : (tracking ? "Sin juego detectado" : "Activa seguimiento en Game Bar");
+                    : (tracking ? LocalizedStrings.Game_NoGameDetected : LocalizedStrings.Game_TrackingOffHint);
                 GameTrackingDot.Fill = tracking && hasGame ? _gameTrackingOnBrush : _gameTrackingOffBrush;
             }
 
-            if (string.IsNullOrWhiteSpace(name) || name.Equals("Desconocido", StringComparison.OrdinalIgnoreCase))
+            if (LocalizedStrings.IsUnknownGameName(name))
             {
-                GreetingText.Text = "Hola";
-                GameContextText.Text = info?.Summary ?? "Activa seguimiento del juego en Game Bar";
+                GreetingText.Text = LocalizedStrings.Chat_GreetingHello;
+                GameContextText.Text = info?.Summary ?? LocalizedStrings.Game_EnableTracking;
             }
             else
             {
-                GreetingText.Text = "Hola, " + name;
+                GreetingText.Text = LocalizedStrings.Chat_GreetingHello + ", " + name;
                 GameContextText.Text = info?.Summary ?? string.Empty;
             }
 
@@ -342,7 +340,7 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                ShowStatus("Configura tu API key en Ajustes (engranaje en Game Bar).");
+                ShowStatus(LocalizedStrings.Status_NoApiKey);
 
             }
 
@@ -353,6 +351,16 @@ namespace GeminiAssistant.Widgets
         private void ShowStatus(string message)
 
         {
+
+            if (!CoreUiDispatcher.IsOnUiThread)
+
+            {
+
+                _ = CoreUiDispatcher.InvokeOnUiAsync(() => ShowStatus(message));
+
+                return;
+
+            }
 
             StatusText.Text = message;
 
@@ -379,7 +387,7 @@ namespace GeminiAssistant.Widgets
 
             ToolTipService.SetToolTip(
                 MicButton,
-                recording ? "Detener y enviar" : "Grabar voz");
+                recording ? LocalizedStrings.Voice_StopSend : LocalizedStrings.Chat_TooltipMic);
         }
 
         private System.Threading.Tasks.Task SetVoiceRecordingUiAsync(bool recording, string status = null)
@@ -530,7 +538,7 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                message = "Error desconocido (el widget pudo cerrarse durante la peticion).";
+                message = LocalizedStrings.Error_Unknown;
 
             }
 
@@ -546,7 +554,7 @@ namespace GeminiAssistant.Widgets
 
                     ShowStatus(message);
 
-                    SafeAddMessageCore("Sistema", message, null);
+                    SafeAddMessageCore(LocalizedStrings.Msg_System, message, null);
 
                 }
 
@@ -700,11 +708,14 @@ namespace GeminiAssistant.Widgets
 
 
 
-        private async System.Threading.Tasks.Task SendUserMessageAsync(string text)
+        private async System.Threading.Tasks.Task SendUserMessageAsync(string text, string geminiText = null)
 
         {
 
             text = text?.Trim();
+            geminiText = geminiText?.Trim();
+
+            var apiText = string.IsNullOrEmpty(geminiText) ? text : geminiText;
 
             var screenshot = _pendingScreenshot;
 
@@ -720,7 +731,7 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                await ReportErrorAsync("Escribe que quieres saber sobre la captura y pulsa Enviar.");
+                await ReportErrorAsync(LocalizedStrings.Error_WriteCapturePrompt);
 
                 return;
 
@@ -732,10 +743,22 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                await ReportErrorAsync("Falta la API key. Abre Ajustes del widget.");
+                await ReportErrorAsync(LocalizedStrings.Error_MissingApiKey);
 
                 return;
 
+            }
+
+            var gameContextSnapshot = _gameContext.Current;
+
+
+
+            if (string.IsNullOrEmpty(geminiText) &&
+                SteamQueryHelper.ShouldFetchSteamData(text, gameContextSnapshot?.DisplayName) &&
+                !AppSettingsService.HasSteamCredentials())
+            {
+                await ReportErrorAsync(LocalizedStrings.Error_MissingSteam);
+                return;
             }
 
 
@@ -744,7 +767,7 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                await RunOnUiAsync(() => ShowStatus("Espera a que termine el envio anterior."));
+                await RunOnUiAsync(() => ShowStatus(LocalizedStrings.Status_WaitSend));
 
                 return;
 
@@ -756,7 +779,7 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                await RunOnUiAsync(() => ShowStatus("Espera a que termine el envio anterior."));
+                await RunOnUiAsync(() => ShowStatus(LocalizedStrings.Status_WaitSend));
 
                 return;
 
@@ -770,15 +793,59 @@ namespace GeminiAssistant.Widgets
 
             WidgetFileLog.Write("Send inicio");
 
-            var gameContextSnapshot = _gameContext.Current;
-
             WidgetKeepAlive keepAlive = null;
 
             try
 
             {
 
-                await SetSendInProgressAsync(true, "Enviando a Gemini...");
+                if (string.IsNullOrEmpty(geminiText) &&
+                    SteamQueryHelper.ShouldFetchSteamData(text, gameContextSnapshot?.DisplayName))
+                {
+                    await RunOnUiAsync(() => ShowStatus(LocalizedStrings.Status_QueryingSteam));
+
+                    var trackingGame = gameContextSnapshot?.IsGame == true &&
+                        !LocalizedStrings.IsUnknownGameName(gameContextSnapshot?.DisplayName);
+
+                    var gameForSteam = SteamQueryHelper.ResolveGameNameForQuery(
+                        text,
+                        gameContextSnapshot?.DisplayName,
+                        trackingGame,
+                        _lastSteamGameQuery);
+
+                    if (!string.IsNullOrWhiteSpace(gameForSteam))
+                    {
+                        _lastSteamGameQuery = gameForSteam;
+                    }
+
+                    var steamBlock = await _steamService.TryBuildChatContextAsync(
+                        text,
+                        gameContextSnapshot?.DisplayName,
+                        trackingGame,
+                        _lastSteamGameQuery,
+                        _operationCts.Token).ConfigureAwait(false);
+
+                    await CoreUiDispatcher.YieldToUiAsync().ConfigureAwait(true);
+
+                    if (string.IsNullOrWhiteSpace(steamBlock))
+                    {
+                        await ReportErrorAsync(LocalizedStrings.Error_SteamNoResponse);
+                        return;
+                    }
+
+                    if (SteamWebApiService.IsSteamFailureContext(steamBlock))
+                    {
+                        await ReportErrorAsync(steamBlock);
+                        return;
+                    }
+
+                    apiText = text + "\n\n" + steamBlock + "\n\n" + LocalizedStrings.Gemini_SteamContextSuffix;
+
+                    WidgetFileLog.Write("Steam chat context OK bytes=" + steamBlock.Length);
+                    await RunOnUiAsync(() => ShowStatus(LocalizedStrings.Status_SteamOk));
+                }
+
+                await SetSendInProgressAsync(true, LocalizedStrings.Status_SendingGemini);
 
 
 
@@ -814,7 +881,7 @@ namespace GeminiAssistant.Widgets
 
                 {
 
-                    SafeAddMessageCore("Tu", text, screenshot);
+                    SafeAddMessageCore(LocalizedStrings.Msg_User, text, screenshot);
 
                     InputBox.Text = string.Empty;
 
@@ -828,15 +895,17 @@ namespace GeminiAssistant.Widgets
 
                 var reply = await _chatService.SendMessageAsync(
 
-                    text,
+                    apiText,
 
                     gameContextSnapshot,
 
                     screenshot,
 
-                    _operationCts.Token);
+                    _operationCts.Token).ConfigureAwait(false);
 
                 WidgetFileLog.Write("Send paso: respuesta OK");
+
+                await CoreUiDispatcher.YieldToUiAsync().ConfigureAwait(true);
 
 
 
@@ -846,7 +915,7 @@ namespace GeminiAssistant.Widgets
 
                     ClearPendingScreenshotUi();
 
-                    SafeAddMessageCore("Gemini", reply, null);
+                    SafeAddMessageCore(LocalizedStrings.Msg_Gemini, reply, null);
 
                     StatusText.Visibility = Visibility.Collapsed;
 
@@ -872,21 +941,19 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                _sendGate.Release();
-
-
-
                 try
 
                 {
 
-                    await SetSendInProgressAsync(false);
+                    await CoreUiDispatcher.YieldToUiAsync().ConfigureAwait(true);
 
-                    await RunOnUiAsync(() => WidgetFileLog.Write("Send fin"));
+                    await SetSendInProgressAsync(false).ConfigureAwait(true);
 
-                    await WidgetKeepAlive.ReleaseAsync(keepAlive);
+                    await RunOnUiAsync(() => WidgetFileLog.Write("Send fin")).ConfigureAwait(true);
 
-                    await _liveService.EndRequestActivityAsync();
+                    await WidgetKeepAlive.ReleaseAsync(keepAlive).ConfigureAwait(true);
+
+                    await _liveService.EndRequestActivityAsync().ConfigureAwait(true);
 
                 }
 
@@ -895,6 +962,14 @@ namespace GeminiAssistant.Widgets
                 {
 
                     WidgetFileLog.Write("Send cleanup: " + WidgetExceptionFormatter.Format(ex));
+
+                }
+
+                finally
+
+                {
+
+                    _sendGate.Release();
 
                 }
 
@@ -912,7 +987,7 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                await ReportErrorAsync("Falta la API key. Abre Ajustes del widget.");
+                await ReportErrorAsync(LocalizedStrings.Error_MissingApiKey);
 
                 return;
 
@@ -940,7 +1015,7 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                await SetActionBusyAsync(true, "Capturando pantalla del juego...");
+                await SetActionBusyAsync(true, LocalizedStrings.Status_Capturing);
 
 
 
@@ -957,7 +1032,7 @@ namespace GeminiAssistant.Widgets
                 await ApplyPendingScreenshotOnUiAsync(shot).ConfigureAwait(true);
 
                 await RunOnUiAsync(() =>
-                    ShowStatus("Screenshot listo. Escribe tu mensaje y pulsa Enviar o Enter."));
+                    ShowStatus(LocalizedStrings.Status_ScreenshotReady));
 
             }
 
@@ -967,7 +1042,7 @@ namespace GeminiAssistant.Widgets
 
                 WidgetFileLog.Write("Captura error: " + WidgetExceptionFormatter.Format(ex));
 
-                await SafeReportErrorAsync("Captura: " + WidgetExceptionFormatter.Format(ex));
+                await SafeReportErrorAsync(LocalizedStrings.Format("Error_CapturePrefix", WidgetExceptionFormatter.Format(ex)));
 
             }
 
@@ -1069,7 +1144,8 @@ namespace GeminiAssistant.Widgets
 
                 var kb = Math.Max(1, jpegBytes.Length / 1024);
                 var sourceLabel = DescribeCaptureSource(screenshot.Source);
-                ScreenshotPreviewLabel.Text = "Captura lista · " + kb + " KB · " + sourceLabel;
+                ScreenshotPreviewLabel.Text = LocalizedStrings.Format(
+                    nameof(LocalizedStrings.Capture_ReadyLabel), kb, sourceLabel);
                 ScreenshotPreviewPanel.Visibility = Visibility.Visible;
 
                 var thumbnail = await ScreenshotThumbnailHelper.CreateFromJpegAsync(jpegBytes)
@@ -1103,21 +1179,21 @@ namespace GeminiAssistant.Widgets
 
             if (string.IsNullOrEmpty(source))
             {
-                return "captura";
+                return LocalizedStrings.Capture_Source_Default;
             }
 
             switch (source)
             {
                 case "ventana":
-                    return "ventana elegida";
+                    return LocalizedStrings.Capture_Source_Window;
                 case "juego":
-                    return "ventana del juego";
+                    return LocalizedStrings.Capture_Source_GameWindow;
                 case "gamebar":
                 case "gamebar-manual":
                 case "gamebar-archivo":
-                    return "Game Bar";
+                    return LocalizedStrings.Capture_Source_GameBar;
                 case "ventana-juego":
-                    return "ventana del juego";
+                    return LocalizedStrings.Capture_Source_GameWindow;
                 default:
                     return source;
             }
@@ -1159,9 +1235,7 @@ namespace GeminiAssistant.Widgets
 
         {
 
-            ShowStatus(
-
-                "Capturar hace screenshot del juego automaticamente. Enter envia.");
+            ShowStatus(LocalizedStrings.Status_CaptureTip);
 
         }
 
@@ -1203,7 +1277,7 @@ namespace GeminiAssistant.Widgets
 
                 await ShowScreenshotReadyUiAsync(_pendingScreenshot);
 
-                ShowStatus("Captura recuperada. Escribe tu mensaje y pulsa Enviar.");
+                ShowStatus(LocalizedStrings.Status_CaptureRestored);
 
             }
 
@@ -1211,7 +1285,7 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                ShowStatus("No se pudo restaurar la captura: " + ex.Message);
+                ShowStatus(LocalizedStrings.Format("Status_CaptureRestoreFailed", ex.Message));
 
             }
 
@@ -1227,7 +1301,7 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                await ReportErrorAsync("Falta la API key. Abre Ajustes del widget.");
+                await ReportErrorAsync(LocalizedStrings.Error_MissingApiKey);
 
                 return;
 
@@ -1267,7 +1341,7 @@ namespace GeminiAssistant.Widgets
 
                 await SetVoiceRecordingUiAsync(
                     true,
-                    "Grabando... Pulsa el microfono otra vez para detener y enviar.");
+                    LocalizedStrings.Status_Recording);
 
                 await _liveService.BeginVoiceActivityAsync();
 
@@ -1293,7 +1367,7 @@ namespace GeminiAssistant.Widgets
 
                             await CoreUiDispatcher.RunOnUiAsync(() =>
 
-                                ShowStatus("Tiempo maximo de grabacion, enviando..."));
+                                ShowStatus(LocalizedStrings.Status_RecordingMax));
 
                             await FinishVoiceRecordingAndSendAsync().ConfigureAwait(false);
 
@@ -1341,7 +1415,7 @@ namespace GeminiAssistant.Widgets
 
 
 
-                await SafeReportErrorAsync("Microfono: " + WidgetExceptionFormatter.Format(ex));
+                await SafeReportErrorAsync(LocalizedStrings.Format("Error_MicPrefix", WidgetExceptionFormatter.Format(ex)));
 
             }
 
@@ -1381,7 +1455,7 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                await SetVoiceRecordingUiAsync(false, "Procesando audio...");
+                await SetVoiceRecordingUiAsync(false, LocalizedStrings.Status_ProcessingAudio);
 
 
 
@@ -1393,9 +1467,9 @@ namespace GeminiAssistant.Widgets
 
                 {
 
-                    SafeAddMessageCore("Tu (voz)", "Analizando voz", screenshot);
+                    SafeAddMessageCore(LocalizedStrings.Msg_UserVoice, LocalizedStrings.Msg_AnalyzingVoice, screenshot);
 
-                    ShowStatus("Gemini transcribe tu voz...");
+                    ShowStatus(LocalizedStrings.Status_Transcribing);
 
                     return System.Threading.Tasks.Task.CompletedTask;
 
@@ -1429,7 +1503,7 @@ namespace GeminiAssistant.Widgets
 
                         ClearPendingScreenshotUi();
 
-                        SafeAddMessageCore("Gemini", reply, null);
+                        SafeAddMessageCore(LocalizedStrings.Msg_Gemini, reply, null);
 
                         StatusText.Visibility = Visibility.Collapsed;
 
@@ -1455,7 +1529,7 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                await ReportErrorAsync("Grabacion de voz cancelada.");
+                await ReportErrorAsync(LocalizedStrings.Error_VoiceCancelled);
 
             }
 
@@ -1463,7 +1537,7 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                await SafeReportErrorAsync("Microfono: " + WidgetExceptionFormatter.Format(ex));
+                await SafeReportErrorAsync(LocalizedStrings.Format("Error_MicPrefix", WidgetExceptionFormatter.Format(ex)));
 
             }
 
@@ -1525,7 +1599,7 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                ShowStatus("Sin entradas en widget-diagnostic.log");
+                ShowStatus(LocalizedStrings.Status_NoLog);
 
             }
 
@@ -1533,7 +1607,7 @@ namespace GeminiAssistant.Widgets
 
             {
 
-                ShowStatus("Log: " + log);
+                ShowStatus(LocalizedStrings.Format("Status_LogPrefix", log));
 
             }
 
@@ -1545,6 +1619,10 @@ namespace GeminiAssistant.Widgets
 
         {
 
+            CancelOperation();
+
+            _sendInProgress = false;
+
             ChatSessionStore.Reset();
 
             ChatSessionStore.Current.Messages.CollectionChanged += OnMessagesCollectionChanged;
@@ -1552,12 +1630,15 @@ namespace GeminiAssistant.Widgets
             MessagesList.ItemsSource = ChatSessionStore.Current.Messages;
 
             _chatService.ClearHistory();
+            _lastSteamGameQuery = null;
 
             UpdateViewMode();
 
             InputBox.Text = string.Empty;
 
             UpdateSendButtonVisibility();
+
+            StatusText.Visibility = Visibility.Collapsed;
 
         }
 
@@ -1659,16 +1740,18 @@ namespace GeminiAssistant.Widgets
             ChatMessageViewModel message,
             byte[] jpegBytes)
         {
-            var thumbnail = await ScreenshotThumbnailHelper.CreateFromJpegAsync(jpegBytes)
-                .ConfigureAwait(true);
-            if (thumbnail == null)
+            await CoreUiDispatcher.RunOnUiAsync(async () =>
             {
-                return;
-            }
+                var thumbnail = await ScreenshotThumbnailHelper.CreateFromJpegAsync(jpegBytes)
+                    .ConfigureAwait(true);
+                if (thumbnail == null)
+                {
+                    return;
+                }
 
-            await CoreUiDispatcher.YieldToUiAsync().ConfigureAwait(true);
-            message.Thumbnail = thumbnail;
-            message.ThumbnailVisibility = Visibility.Visible;
+                message.Thumbnail = thumbnail;
+                message.ThumbnailVisibility = Visibility.Visible;
+            }).ConfigureAwait(true);
         }
 
         private static bool IsUserRole(string roleLabel)
@@ -1680,7 +1763,7 @@ namespace GeminiAssistant.Widgets
                 return false;
             }
 
-            return roleLabel.StartsWith("Tu", StringComparison.OrdinalIgnoreCase);
+            return LocalizedStrings.IsUserRole(roleLabel);
 
         }
 
@@ -1690,7 +1773,7 @@ namespace GeminiAssistant.Widgets
 
         {
 
-            return "TU";
+            return LocalizedStrings.Chat_UserInitials;
 
         }
 
@@ -1724,7 +1807,9 @@ namespace GeminiAssistant.Widgets
 
             ChatPanel.Visibility = hasChat ? Visibility.Visible : Visibility.Collapsed;
 
-            InputBox.PlaceholderText = hasChat ? "Escribe un mensaje..." : "Pregúntame lo que quieras";
+            InputBox.PlaceholderText = hasChat
+                ? LocalizedStrings.Chat_InputPlaceholderActive
+                : LocalizedStrings.Chat_InputPlaceholder;
 
         }
 
@@ -1733,6 +1818,16 @@ namespace GeminiAssistant.Widgets
         private void ScrollMessagesToEnd()
 
         {
+
+            if (!CoreUiDispatcher.IsOnUiThread)
+
+            {
+
+                _ = Dispatcher.RunAsync(CoreDispatcherPriority.Normal, ScrollMessagesToEnd);
+
+                return;
+
+            }
 
             if (MessagesList.Items.Count == 0)
             {
@@ -1798,6 +1893,114 @@ namespace GeminiAssistant.Widgets
 
 
 
+        private async System.Threading.Tasks.Task SendSteamAchievementsAsync()
+        {
+            if (!AppSettingsService.HasApiKey())
+            {
+                await ReportErrorAsync(LocalizedStrings.Error_MissingApiKey);
+                return;
+            }
+
+            if (!AppSettingsService.HasSteamCredentials())
+            {
+                await ReportErrorAsync(LocalizedStrings.Steam_MissingCredentials);
+                return;
+            }
+
+            if (_sendInProgress)
+            {
+                await RunOnUiAsync(() => ShowStatus(LocalizedStrings.Status_WaitSend));
+                return;
+            }
+
+            await RunOnUiAsync(() => ShowStatus(LocalizedStrings.Format("Status_QueryingSteamAchievements")));
+
+            var gameName = SteamQueryHelper.SanitizeGameDisplayName(_gameContext?.Current?.DisplayName);
+            SteamAchievementsReport report;
+            try
+            {
+                report = await _steamService.GetAchievementsReportAsync(gameName).ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                WidgetFileLog.Write("Steam logros UI: " + WidgetExceptionFormatter.Format(ex));
+                await SafeReportErrorAsync(LocalizedStrings.Format("Error_SteamPrefix", WidgetExceptionFormatter.Format(ex)));
+                return;
+            }
+
+            if (report.NeedsClarification)
+            {
+                await ReportErrorAsync(report.ClarificationMessage);
+                return;
+            }
+
+            if (report.HasError)
+            {
+                await ReportErrorAsync(report.ErrorMessage);
+                return;
+            }
+
+            var message = report.FormatForGemini() + "\n\n" + LocalizedStrings.Prompt_SteamAchievementsGemini;
+
+            var displayText = LocalizedStrings.Format(
+                "Prompt_SteamAchievementsDisplay",
+                report.GameName,
+                report.UnlockedCount,
+                report.TotalCount);
+
+            await SendUserMessageAsync(displayText, message);
+        }
+
+        private async System.Threading.Tasks.Task SendSteamProfileAsync()
+        {
+            if (!AppSettingsService.HasApiKey())
+            {
+                await ReportErrorAsync(LocalizedStrings.Error_MissingApiKey);
+                return;
+            }
+
+            if (!AppSettingsService.HasSteamCredentials())
+            {
+                await ReportErrorAsync(LocalizedStrings.Steam_MissingCredentials);
+                return;
+            }
+
+            if (_sendInProgress)
+            {
+                await RunOnUiAsync(() => ShowStatus(LocalizedStrings.Status_WaitSend));
+                return;
+            }
+
+            await RunOnUiAsync(() => ShowStatus(LocalizedStrings.Format("Status_QueryingSteamProfile")));
+
+            SteamProfileReport report;
+            try
+            {
+                report = await _steamService.GetProfileReportAsync().ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                WidgetFileLog.Write("Steam perfil UI: " + WidgetExceptionFormatter.Format(ex));
+                await SafeReportErrorAsync(LocalizedStrings.Format("Error_SteamPrefix", WidgetExceptionFormatter.Format(ex)));
+                return;
+            }
+
+            if (report.HasError)
+            {
+                await ReportErrorAsync(report.ErrorMessage);
+                return;
+            }
+
+            var message = report.FormatForGemini() + "\n\n" + LocalizedStrings.Prompt_SteamProfileGemini;
+
+            var displayText = LocalizedStrings.Format(
+                "Prompt_SteamProfileDisplay",
+                report.PersonaName,
+                report.OwnedGamesCount);
+
+            await SendUserMessageAsync(displayText, message);
+        }
+
         private void InsertFabPrompt(string text)
 
         {
@@ -1814,11 +2017,11 @@ namespace GeminiAssistant.Widgets
 
 
 
-        private void FabAchievements_Click(object sender, RoutedEventArgs e) => InsertFabPrompt("Mostrar mis logros de Xbox");
+        private async void FabAchievements_Click(object sender, RoutedEventArgs e) => await SendSteamAchievementsAsync();
 
-        private void FabTips_Click(object sender, RoutedEventArgs e) => InsertFabPrompt("Dame tips para este juego");
+        private void FabTips_Click(object sender, RoutedEventArgs e) => InsertFabPrompt(LocalizedStrings.Prompt_FabTips);
 
-        private void FabStats_Click(object sender, RoutedEventArgs e) => InsertFabPrompt("¿Cuál es mi estadística de juego?");
+        private async void FabStats_Click(object sender, RoutedEventArgs e) => await SendSteamProfileAsync();
 
 
 
@@ -1826,18 +2029,15 @@ namespace GeminiAssistant.Widgets
 
         {
 
-            await SendUserMessageAsync("Recomendaciones de juegos para mi perfil");
+            await SendUserMessageAsync(LocalizedStrings.Prompt_GameRecommendations);
 
         }
 
 
 
         private async void SuggestionAchievements_Click(object sender, RoutedEventArgs e)
-
         {
-
-            await SendUserMessageAsync("Mostrar mis logros de Xbox");
-
+            await SendSteamAchievementsAsync();
         }
 
 

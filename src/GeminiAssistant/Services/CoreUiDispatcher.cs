@@ -40,6 +40,11 @@ namespace GeminiAssistant.Services
             return tcs.Task;
         }
 
+        public static Task InvokeOnUiAsync(Action action)
+        {
+            return RunOnUiAsync(action ?? (() => { }));
+        }
+
         public static Task RunOnUiAsync(Action action)
         {
             if (action == null)

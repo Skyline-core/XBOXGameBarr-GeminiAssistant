@@ -11,20 +11,26 @@ namespace GeminiAssistant.Services
     {
         private SpeechRecognizer _recognizer;
         private bool _initialized;
+        private string _initializedLanguageTag;
 
         public async Task EnsureInitializedAsync()
         {
-            if (_initialized)
+            var desiredTag = AppLanguageService.GetEffectiveLanguageTag();
+            if (_initialized && string.Equals(_initializedLanguageTag, desiredTag, StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
 
+            if (_initialized)
+            {
+                _recognizer?.Dispose();
+                _recognizer = null;
+                _initialized = false;
+            }
+
             await EnsureMicrophoneAccessAsync().ConfigureAwait(true);
 
-            _recognizer = TryCreateRecognizer("es-ES")
-                ?? TryCreateRecognizer("es-MX")
-                ?? new SpeechRecognizer();
-
+            _recognizer = CreateRecognizerForAppLanguage() ?? new SpeechRecognizer();
             _recognizer.Timeouts.InitialSilenceTimeout = TimeSpan.FromSeconds(8);
             _recognizer.Timeouts.EndSilenceTimeout = TimeSpan.FromSeconds(1.2);
             _recognizer.Timeouts.BabbleTimeout = TimeSpan.FromSeconds(0);
@@ -32,11 +38,25 @@ namespace GeminiAssistant.Services
             var compileResult = await _recognizer.CompileConstraintsAsync().AsTask().ConfigureAwait(true);
             if (compileResult.Status != SpeechRecognitionResultStatus.Success)
             {
-                throw new InvalidOperationException(
-                    "No se pudo inicializar el reconocimiento de voz. Instala el idioma de voz espanol en Windows.");
+                throw new InvalidOperationException(LocalizedStrings.Error_SpeechInit);
             }
 
             _initialized = true;
+            _initializedLanguageTag = desiredTag;
+        }
+
+        private static SpeechRecognizer CreateRecognizerForAppLanguage()
+        {
+            foreach (var tag in AppLanguageService.GetSpeechLanguageTags())
+            {
+                var recognizer = TryCreateRecognizer(tag);
+                if (recognizer != null)
+                {
+                    return recognizer;
+                }
+            }
+
+            return null;
         }
 
         private static async Task EnsureMicrophoneAccessAsync()
@@ -56,8 +76,7 @@ namespace GeminiAssistant.Services
             }
             catch (UnauthorizedAccessException)
             {
-                throw new InvalidOperationException(
-                    "Permiso de microfono denegado. Configuracion > Privacidad > Microfono > Gemini Assistant.");
+                throw new InvalidOperationException(LocalizedStrings.Error_MicDenied);
             }
         }
 
@@ -73,9 +92,6 @@ namespace GeminiAssistant.Services
             }
         }
 
-        /// <summary>
-        /// Listens for one utterance (no overlay UI). Timeouts are handled by SpeechRecognizer.
-        /// </summary>
         public async Task<string> ListenOnceAsync(CancellationToken cancellationToken = default)
         {
             await EnsureInitializedAsync().ConfigureAwait(true);
@@ -86,24 +102,23 @@ namespace GeminiAssistant.Services
 
             if (result.Status == SpeechRecognitionResultStatus.UserCanceled)
             {
-                throw new OperationCanceledException("Reconocimiento cancelado.");
+                throw new OperationCanceledException();
             }
 
             if (result.Status == SpeechRecognitionResultStatus.TimeoutExceeded)
             {
-                throw new InvalidOperationException("No se detecto voz a tiempo. Pulsa Microfono y habla de inmediato.");
+                throw new InvalidOperationException(LocalizedStrings.Status_RecordingMax);
             }
 
             if (result.Status != SpeechRecognitionResultStatus.Success)
             {
-                throw new InvalidOperationException(
-                    "No se entendio el audio (" + result.Status + "). Habla mas cerca del microfono.");
+                throw new InvalidOperationException(result.Status.ToString());
             }
 
             var text = result.Text?.Trim() ?? string.Empty;
             if (string.IsNullOrEmpty(text))
             {
-                throw new InvalidOperationException("No se detecto texto. Repite mas fuerte o instala el paquete de voz en espanol.");
+                throw new InvalidOperationException(LocalizedStrings.Error_SpeechInit);
             }
 
             return text;
@@ -114,6 +129,7 @@ namespace GeminiAssistant.Services
             _recognizer?.Dispose();
             _recognizer = null;
             _initialized = false;
+            _initializedLanguageTag = null;
         }
     }
 }

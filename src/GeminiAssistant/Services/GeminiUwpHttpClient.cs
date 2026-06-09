@@ -30,6 +30,27 @@ namespace GeminiAssistant.Services
             }
         }
 
+        public static async Task<(int StatusCode, string Body)> GetStringAsync(
+            string url,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrEmpty(url))
+            {
+                throw new ArgumentException("URL vacia.");
+            }
+
+            using (var response = await GetClient()
+                .GetAsync(new Uri(url))
+                .AsTask()
+                .ConfigureAwait(false))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var body = await response.Content.ReadAsStringAsync().AsTask().ConfigureAwait(false);
+                WidgetFileLog.Write("HTTP GET status=" + (int)response.StatusCode + " respBytes=" + (body?.Length ?? 0));
+                return ((int)response.StatusCode, body);
+            }
+        }
+
         public static async Task<(int StatusCode, string Body)> PostJsonAsync(
             string url,
             string json,

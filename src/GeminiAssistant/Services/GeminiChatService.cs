@@ -11,7 +11,7 @@ namespace GeminiAssistant.Services
 {
     public sealed class GeminiChatService
     {
-        private const string Model = "gemini-2.5-flash";
+        private const string Model = "gemini-3.5-flash";
         private const int MaxHistoryTurns = 4;
         private const int MaxOutputTokens = 2048;
         private static readonly object HistoryLock = new object();
@@ -49,15 +49,14 @@ namespace GeminiAssistant.Services
         {
             if (wavBytes == null || wavBytes.Length == 0)
             {
-                throw new InvalidOperationException("El audio grabado esta vacio.");
+                throw new InvalidOperationException(LocalizedStrings.Gemini_EmptyAudio);
             }
 
             var parts = new List<GeminiPart>
             {
                 new GeminiPart
                 {
-                    Text = "Escucha el audio del jugador. Transcribelo en espanol y responde como asistente de gaming. " +
-                           "Si no hay voz audible, dilo claramente."
+                    Text = LocalizedStrings.Gemini_VoiceInstruction
                 },
                 new GeminiPart
                 {
@@ -98,7 +97,7 @@ namespace GeminiAssistant.Services
             var apiKey = AppSettingsService.GetApiKey();
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                throw new InvalidOperationException("Configura tu API key en Ajustes del widget.");
+                throw new InvalidOperationException(LocalizedStrings.Gemini_ConfigApiKey);
             }
 
             List<GeminiContent> apiContents;
@@ -120,8 +119,7 @@ namespace GeminiAssistant.Services
                     {
                         new GeminiPart
                         {
-                            Text = (gameContext?.ToSystemInstruction() ?? "Eres un asistente de gaming.") +
-                                   " Responde claro y directo; evita relleno innecesario."
+                            Text = GeminiSystemInstruction.Build(gameContext)
                         }
                     }
                 },
@@ -240,7 +238,7 @@ namespace GeminiAssistant.Services
                             string.Equals(finish.GetString(), "MAX_TOKENS", StringComparison.OrdinalIgnoreCase))
                         {
                             WidgetFileLog.Write("Gemini: respuesta truncada por MAX_TOKENS");
-                            text += "\n\n[Respuesta cortada por limite de longitud. Pide mas detalle si lo necesitas.]";
+                            text += "\n\n" + LocalizedStrings.Gemini_ResponseTruncated;
                         }
 
                         return text.Trim();
@@ -250,11 +248,12 @@ namespace GeminiAssistant.Services
                 if (root.TryGetProperty("promptFeedback", out var feedback) &&
                     feedback.TryGetProperty("blockReason", out var blockReason))
                 {
-                    throw new InvalidOperationException("Respuesta bloqueada: " + blockReason.GetString());
+                    throw new InvalidOperationException(
+                        LocalizedStrings.Format("Gemini_ResponseBlocked", blockReason.GetString()));
                 }
             }
 
-            throw new InvalidOperationException("Gemini no devolvio texto en la respuesta.");
+            throw new InvalidOperationException(LocalizedStrings.Gemini_NoTextResponse);
         }
 
         private static string ExtractCandidateText(JsonElement candidate)
@@ -298,7 +297,7 @@ namespace GeminiAssistant.Services
                         var text = message.GetString();
                         if (!string.IsNullOrEmpty(text))
                         {
-                            return $"Gemini API ({statusCode}): {text}";
+                            return LocalizedStrings.Format("Gemini_ApiError", statusCode, text);
                         }
                     }
                 }
@@ -307,7 +306,7 @@ namespace GeminiAssistant.Services
             {
             }
 
-            return $"Gemini API error ({statusCode})";
+            return LocalizedStrings.Format("Gemini_ApiErrorGeneric", statusCode);
         }
 
         private sealed class GeminiRequest

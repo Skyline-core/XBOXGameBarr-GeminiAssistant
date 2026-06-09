@@ -240,9 +240,9 @@
                 <FontIcon Glyph="&#xE712;" FontSize="18" />
                 <Button.Flyout>
                     <MenuFlyout>
-                        <MenuFlyoutItem Text="Ajustes" Click="MenuSettings_Click" />
-                        <MenuFlyoutItem Text="Limpiar chat" Click="ClearChat_Click" />
-                        <MenuFlyoutItem Text="Ver log" Click="ShowLog_Click" />
+                        <MenuFlyoutItem x:Name="MenuSettingsItem" Click="MenuSettings_Click" />
+                        <MenuFlyoutItem x:Name="MenuClearItem" Click="ClearChat_Click" />
+                        <MenuFlyoutItem x:Name="MenuLogItem" Click="ShowLog_Click" />
                     </MenuFlyout>
                 </Button.Flyout>
             </Button>
@@ -301,17 +301,14 @@
                                 <Ellipse Grid.Row="1" Grid.Column="1" Width="6" Height="6" Fill="#FFB5CCB8" Margin="1" />
                             </Grid>
                         </Border>
-                        <TextBlock Text="Gemini" FontSize="16" FontWeight="SemiBold"
+                        <TextBlock x:Name="HomeGeminiTitleText" FontSize="16" FontWeight="SemiBold"
                                    Foreground="{StaticResource GwTextPrimaryBrush}" VerticalAlignment="Center" />
                     </StackPanel>
 
                     <TextBlock x:Name="GreetingText" Text="Hola" FontSize="13"
                                Foreground="{StaticResource GwTextSecondaryBrush}" Margin="0,0,0,4" />
-                    <TextBlock FontSize="24" LineHeight="30" Margin="0,0,0,6">
-                        <Run Text="¿En qué puedo " Foreground="#FFA8C7FA" />
-                        <LineBreak />
-                        <Run Text="ayudarte hoy?" Foreground="#FFD0BCFF" />
-                    </TextBlock>
+                    <TextBlock x:Name="GreetingHelpText" FontSize="24" LineHeight="30" Margin="0,0,0,6"
+                               Foreground="#FFD0BCFF" />
                     <TextBlock x:Name="GameContextText" Text="Detectando juego..." FontSize="11"
                                Foreground="{StaticResource GwTextSecondaryBrush}" TextWrapping="Wrap"
                                Margin="0,0,0,20" Opacity="0.9" />
@@ -323,8 +320,8 @@
                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="Recomendaciones de juegos" FontWeight="SemiBold" FontSize="13" />
-                                <TextBlock Text="Basado en tu sesion activa" FontSize="11" Opacity="0.7" />
+                                <TextBlock x:Name="SuggestionGamesTitle" FontWeight="SemiBold" FontSize="13" />
+                                <TextBlock x:Name="SuggestionGamesSub" FontSize="11" Opacity="0.7" />
                             </StackPanel>
                         </StackPanel>
                     </Button>
@@ -335,8 +332,8 @@
                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="Mis logros de Xbox" FontWeight="SemiBold" FontSize="13" />
-                                <TextBlock Text="Pregunta por logros y progreso" FontSize="11" Opacity="0.7" />
+                                <TextBlock x:Name="SuggestionSteamTitle" FontWeight="SemiBold" FontSize="13" />
+                                <TextBlock x:Name="SuggestionSteamSub" FontSize="11" Opacity="0.7" />
                             </StackPanel>
                         </StackPanel>
                     </Button>
@@ -347,8 +344,8 @@
                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="Analizar captura" FontWeight="SemiBold" FontSize="13" />
-                                <TextBlock Text="Captura la pantalla del juego" FontSize="11" Opacity="0.7" />
+                                <TextBlock x:Name="SuggestionCaptureTitle" FontWeight="SemiBold" FontSize="13" />
+                                <TextBlock x:Name="SuggestionCaptureSub" FontSize="11" Opacity="0.7" />
                             </StackPanel>
                         </StackPanel>
                     </Button>
@@ -368,25 +365,25 @@
                         <Button x:Name="FabCaptureButton" Style="{StaticResource GwFabStyle}" Click="Capture_Click" Margin="0,0,8,0">
                             <StackPanel Orientation="Horizontal">
                                 <FontIcon Glyph="&#xE722;" FontSize="14" Margin="0,0,6,0" />
-                                <TextBlock Text="Capturar" VerticalAlignment="Center" />
+                                <TextBlock x:Name="FabCaptureText" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource GwFabStyle}" Click="FabAchievements_Click" Margin="0,0,8,0">
                             <StackPanel Orientation="Horizontal">
                                 <FontIcon Glyph="&#xE735;" FontSize="14" Margin="0,0,6,0" />
-                                <TextBlock Text="Logros" VerticalAlignment="Center" />
+                                <TextBlock x:Name="FabAchievementsText" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource GwFabStyle}" Click="FabTips_Click" Margin="0,0,8,0">
                             <StackPanel Orientation="Horizontal">
                                 <FontIcon Glyph="&#xE706;" FontSize="14" Margin="0,0,6,0" />
-                                <TextBlock Text="Tips" VerticalAlignment="Center" />
+                                <TextBlock x:Name="FabTipsText" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource GwFabStyle}" Click="FabStats_Click">
                             <StackPanel Orientation="Horizontal">
                                 <FontIcon Glyph="&#xE9D2;" FontSize="14" Margin="0,0,6,0" />
-                                <TextBlock Text="Stats" VerticalAlignment="Center" />
+                                <TextBlock x:Name="FabStatsText" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -434,8 +431,8 @@
                     <TextBlock x:Name="ScreenshotPreviewLabel" Grid.Column="1" Margin="10,0,8,0"
                                VerticalAlignment="Center" FontSize="12" LineHeight="18"
                                TextWrapping="Wrap" Foreground="{StaticResource GwTextPrimaryBrush}" />
-                    <Button Grid.Column="2" Style="{StaticResource GwChipIconButtonStyle}"
-                            Click="RemoveScreenshot_Click" ToolTipService.ToolTip="Quitar captura"
+                    <Button x:Name="RemoveScreenshotButton" Grid.Column="2" Style="{StaticResource GwChipIconButtonStyle}"
+                            Click="RemoveScreenshot_Click"
                             VerticalAlignment="Center">
                         <FontIcon Glyph="&#xE711;" FontSize="12" Foreground="{StaticResource GwTextSecondaryBrush}" />
                     </Button>

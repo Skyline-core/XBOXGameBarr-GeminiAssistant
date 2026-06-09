@@ -17,4 +17,16 @@
     </ItemGroup>
   </Target>
 
+  <!-- VS "Crear paquetes" ejecuta MakeAppx sobre bin\Platform\Config\AppX (LayoutDir del appxrecipe). -->
+  <Target Name="EnsureVisualStudioAppXLayout"
+          AfterTargets="GenerateMsixPackage"
+          Condition="'$(AppxPackage)' == 'true' and Exists('$(AppxPackageRecipe)')">
+    <PropertyGroup>
+      <_SyncAppXLayoutScript>$(MSBuildProjectDirectory)\..\..\scripts\Sync-AppXLayout.ps1</_SyncAppXLayoutScript>
+      <_VsAppXLayout>$(TargetDir)AppX</_VsAppXLayout>
+    </PropertyGroup>
+    <Message Importance="high" Text="Sync-AppXLayout: si falla, cierra el widget Gemini Assistant en Game Bar antes de recompilar." />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(_SyncAppXLayoutScript)&quot; -RecipePath &quot;$(AppxPackageRecipe)&quot; -LayoutDir &quot;$(_VsAppXLayout)&quot;" />
+  </Target>
+
 </Project>

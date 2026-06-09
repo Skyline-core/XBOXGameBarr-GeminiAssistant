@@ -18,13 +18,14 @@ namespace GeminiAssistant
 
         public App()
         {
+            AppLanguageService.ApplySavedOrSystemLanguage();
             InitializeComponent();
             Suspending += OnSuspending;
             UnhandledException += OnUnhandledException;
             CoreApplication.UnhandledErrorDetected += OnUnhandledErrorDetected;
         }
 
-        private void OnUnhandledErrorDetected(object sender, UnhandledErrorDetectedEventArgs e)
+        private void OnUnhandledErrorDetected(object? sender, UnhandledErrorDetectedEventArgs e)
         {
             try
             {
@@ -62,6 +63,7 @@ namespace GeminiAssistant
             }
 
             WidgetFileLog.Write("OnActivated launch=" + widgetArgs.IsLaunchActivation + " ext=" + widgetArgs.AppExtensionId);
+            AppLanguageService.ApplySavedOrSystemLanguage();
 
             if (widgetArgs.IsLaunchActivation)
             {
@@ -70,6 +72,9 @@ namespace GeminiAssistant
             }
 
             ActivateWidgetRepeat(widgetArgs);
+            _ = Window.Current.Dispatcher.RunAsync(
+                Windows.UI.Core.CoreDispatcherPriority.Normal,
+                () => RefreshOpenWidgetLocalization(widgetArgs));
         }
 
         private static void ActivateWidgetLaunch(XboxGameBarWidgetActivatedEventArgs widgetArgs)
@@ -134,6 +139,24 @@ namespace GeminiAssistant
                 {
                     rootFrame.Navigate(typeof(SettingsWidget), _settingsWidget);
                 }
+            }
+        }
+
+        private static void RefreshOpenWidgetLocalization(XboxGameBarWidgetActivatedEventArgs widgetArgs)
+        {
+            var rootFrame = Window.Current.Content as Frame;
+            if (rootFrame?.Content == null)
+            {
+                return;
+            }
+
+            if (widgetArgs.AppExtensionId == "ChatWidget" && rootFrame.Content is ChatWidget chatWidget)
+            {
+                chatWidget.RefreshLocalization();
+            }
+            else if (widgetArgs.AppExtensionId == "SettingsWidget" && rootFrame.Content is SettingsWidget settingsWidget)
+            {
+                settingsWidget.RefreshLocalization();
             }
         }
 

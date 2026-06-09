@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>AppContainerExe</OutputType>
     <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
@@ -21,14 +21,14 @@
     <GenerateAppxPackageOnBuild>true</GenerateAppxPackageOnBuild>
     <AppxPackage>true</AppxPackage>
     <NoWarn>$(NoWarn);NETSDK1206</NoWarn>
-    <PackageCertificateKeyFile Condition="Exists('$(MSBuildProjectDirectory)\GeminiAssistant_TemporaryKey.pfx')">GeminiAssistant_TemporaryKey.pfx</PackageCertificateKeyFile>
-    <PackageCertificatePassword Condition="'$(PackageCertificateKeyFile)' != ''">GeminiAssistant</PackageCertificatePassword>
-    <AppxPackageSigningEnabled Condition="'$(PackageCertificateKeyFile)' != ''">true</AppxPackageSigningEnabled>
-    <AppxPackageSigningEnabled Condition="'$(PackageCertificateKeyFile)' == ''">false</AppxPackageSigningEnabled>
+    <!-- Certificado de dev solo en Debug; Release usa el certificado de Partner Center (asociacion Store). -->
+    <PackageCertificateKeyFile Condition="'$(Configuration)' == 'Debug' and Exists('$(MSBuildProjectDirectory)\GeminiAssistant_TemporaryKey.pfx')">GeminiAssistant_TemporaryKey.pfx</PackageCertificateKeyFile>
+    <PackageCertificatePassword Condition="'$(Configuration)' == 'Debug' and '$(PackageCertificateKeyFile)' != ''">GeminiAssistant</PackageCertificatePassword>
+    <AppxPackageSigningEnabled Condition="'$(PackageCertificateKeyFile)' != '' or '$(PackageCertificateThumbprint)' != ''">true</AppxPackageSigningEnabled>
+    <AppxPackageSigningEnabled Condition="'$(PackageCertificateKeyFile)' == '' and '$(PackageCertificateThumbprint)' == ''">false</AppxPackageSigningEnabled>
     <DeployOnBuild Condition="'$(Configuration)' == 'Debug'">true</DeployOnBuild>
     <Platforms>x86;x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
-    <ApplicationManifest>Package.appxmanifest</ApplicationManifest>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <Version>1.0.1</Version>
     <Description>Xbox Game Bar widget with Gemini AI assistant</Description>
@@ -36,6 +36,13 @@
     <GameBarRuntimeNativePath Condition="'$(Platform)' == 'x86'">win10-x86</GameBarRuntimeNativePath>
     <GameBarRuntimeNativePath Condition="'$(Platform)' == 'ARM64'">win10-arm64</GameBarRuntimeNativePath>
     <GameBarRuntimeNativePath Condition="'$(GameBarRuntimeNativePath)' == ''">win10-x64</GameBarRuntimeNativePath>
+    <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
+    <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
+    <AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
+    <GenerateTestArtifacts>False</GenerateTestArtifacts>
+    <AppxBundle>Never</AppxBundle>
+    <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
+    <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
   </PropertyGroup>
 
   <ItemGroup>
@@ -62,7 +69,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Manifest Include="Package.appxmanifest" />
+    <AppxManifest Include="Package.appxmanifest">
+      <SubType>Designer</SubType>
+    </AppxManifest>
+    <None Include="Package.StoreAssociation.xml" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(EnableMsixTooling)' == 'true'">
@@ -70,6 +80,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Update="Properties\EnglishResources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>EnglishResources.resx</DependentUpon>
+    </Compile>
     <Compile Update="Properties\Resources.Designer.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
@@ -81,6 +96,13 @@
     <EmbeddedResource Update="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Update="Properties\Resources.en-US.resx">
+      <DependentUpon>Resources.resx</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Update="Properties\EnglishResources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>EnglishResources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
 </Project>
