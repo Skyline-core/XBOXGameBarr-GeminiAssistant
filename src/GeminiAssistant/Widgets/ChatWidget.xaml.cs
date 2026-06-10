@@ -70,17 +70,21 @@ namespace GeminiAssistant.Widgets
 
 
         public ChatWidget()
-
         {
-
-            InitializeComponent();
-
-            CoreUiDispatcher.Bind(Dispatcher);
-
-            MessagesList.ItemsSource = ChatSessionStore.Current.Messages;
-            ChatSessionStore.Current.Messages.CollectionChanged += OnMessagesCollectionChanged;
-            UpdateSendButtonVisibility();
-            UpdateViewMode();
+            try
+            {
+                InitializeComponent();
+                CoreUiDispatcher.Bind(Dispatcher);
+                MessagesList.ItemsSource = ChatSessionStore.Current.Messages;
+                ChatSessionStore.Current.Messages.CollectionChanged += OnMessagesCollectionChanged;
+                UpdateSendButtonVisibility();
+                UpdateViewMode();
+            }
+            catch (Exception ex)
+            {
+                WidgetFileLog.Write("ChatWidget ctor: " + WidgetExceptionFormatter.Format(ex));
+                WidgetStartupUi.ShowError("Could not load chat", ex.Message);
+            }
         }
 
 

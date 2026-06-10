@@ -93,5 +93,5 @@ Sin esto, el banner mostrará que el seguimiento está desactivado.
 | `Microsoft.Graphics.Win2D` >= 1.26.0 no encontrado | El proyecto usa **`Win2D.uwp`** 1.26.0 (el paquete antiguo solo llega a 1.4.0). Restaura NuGet de nuevo. |
 | `PhoneProductId` inv�lido | Debe ser un GUID, no el nombre de la app. |
 | `microphone` en `uap:Capability` | Usar `<DeviceCapability Name="microphone" />`. |
-| Captura de pantalla no funciona | Declarar `<uap6:Capability Name="graphicsCapture" />` en el manifiesto. |
+| Captura de pantalla no funciona | Declarar `<uap6:Capability Name="graphicsCapture" />`, `<uap11:Capability Name="graphicsCaptureProgrammatic" />` y, si ocultas el borde amarillo, `<uap11:Capability Name="graphicsCaptureWithoutBorder" />` (no usar `rescap`). |
 | Errores CS1525 en `Default.rd.xml` (`<` no v�lido) | El XML estaba en `<Compile>` por error; debe quedar solo como `<Content>`. Recarga el proyecto y recompila. |

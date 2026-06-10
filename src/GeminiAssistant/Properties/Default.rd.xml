@@ -1,8 +1,12 @@
 <Directives xmlns="http://schemas.microsoft.com/netfx/2013/01/metadata">
   <Application>
     <Assembly Name="*Application*" Dynamic="Required All" />
+    <Assembly Name="GeminiAssistant" Dynamic="Required All" />
   </Application>
   <Library Name="Newtonsoft.Json">
     <Namespace Name="Newtonsoft.Json" Serialize="All" />
+  </Library>
+  <Library Name="System.Text.Json">
+    <Namespace Name="System.Text.Json" Serialize="All" />
   </Library>
 </Directives>

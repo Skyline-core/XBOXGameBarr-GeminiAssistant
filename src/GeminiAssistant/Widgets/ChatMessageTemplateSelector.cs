@@ -11,6 +11,11 @@ namespace GeminiAssistant.Widgets
 
         protected override DataTemplate SelectTemplateCore(object item)
         {
+            return SelectTemplateCore(item, null);
+        }
+
+        protected override DataTemplate SelectTemplateCore(object item, DependencyObject container)
+        {
             if (item is ChatMessageViewModel vm && vm.IsUserMessage)
             {
                 return UserMessageTemplate;
